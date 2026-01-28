@@ -72,7 +72,10 @@ async function loadJSON(relativePath, locale) {
   } catch (error) {
     // Si el archivo no existe, retornar objeto vacío (no es error crítico)
     if (error.code === 'ENOENT') {
-      console.warn(`⚠️  Translation file not found: ${locale}/${relativePath}`);
+      // Solo mostrar warning en desarrollo
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`⚠️  Translation file not found: ${locale}/${relativePath}`);
+      }
       return {};
     }
     
@@ -86,19 +89,51 @@ async function loadJSON(relativePath, locale) {
 // DETECCIÓN DE LOCALE
 // ========================================
 
+// ✅ Importar sistema de base de datos
+import { db } from '../database/ResilientDatabaseManager.js';
+
 /**
- * Obtiene el locale del servidor desde la base de datos o configuración
+ * Obtiene el locale del servidor desde la base de datos
  * @param {string} guildId - ID del servidor de Discord
  * @returns {Promise<string>} Código de idioma
  */
 export async function getGuildLocale(guildId) {
-  // TODO: Implementar según tu sistema de base de datos
-  // Ejemplo:
-  // const guild = await db.guilds.findOne({ id: guildId });
-  // return guild?.locale || DEFAULT_LOCALE;
+  console.log(`\n🔍 [getGuildLocale] Iniciando para guild: ${guildId}`);
   
-  // Por ahora, retornar default
-  return DEFAULT_LOCALE;
+  if (!guildId) {
+    console.log(`⚠️  [getGuildLocale] No guild ID, retornando default`);
+    return DEFAULT_LOCALE;
+  }
+  
+  try {
+    console.log(`📡 [getGuildLocale] Consultando DB...`);
+    
+    // Timeout agresivo para evitar delays
+    const lang = await Promise.race([
+      db.getGuildLang(guildId),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 800)
+      )
+    ]);
+    
+    console.log(`✅ [getGuildLocale] DB retornó: "${lang}" (tipo: ${typeof lang})`);
+    
+    // Validar que sea un idioma soportado
+    const supportedLangs = ['en', 'es'];
+    if (!supportedLangs.includes(lang)) {
+      console.warn(`⚠️ [getGuildLocale] Idioma no soportado "${lang}", usando default`);
+      return DEFAULT_LOCALE;
+    }
+    
+    console.log(`✅ [getGuildLocale] Idioma válido, retornando: "${lang}"`);
+    return lang;
+    
+  } catch (error) {
+    console.error(`❌ [getGuildLocale] Error:`, error.message);
+    console.log(`   Stack:`, error.stack?.split('\n')[0]);
+    console.log(`⚠️  [getGuildLocale] Usando fallback: ${DEFAULT_LOCALE}`);
+    return DEFAULT_LOCALE;
+  }
 }
 
 /**
@@ -107,7 +142,8 @@ export async function getGuildLocale(guildId) {
  * @returns {Promise<string>} Código de idioma
  */
 export async function getUserLocale(userId) {
-  // TODO: Implementar según tu sistema
+  // Por ahora usar default para DMs
+  // TODO: Implementar preferencia de usuario si se agrega en el futuro
   return DEFAULT_LOCALE;
 }
 
@@ -122,47 +158,95 @@ export async function getUserLocale(userId) {
  * @returns {Promise<Function>} Función traductora t(key, params)
  */
 export async function createTranslator(commandData, context) {
+  // ========================================
+  // 🔍 DEBUG: Inicio del proceso
+  // ========================================
+  console.log('\n🔍 ========== TRANSLATOR DEBUG START ==========');
+  console.log('📋 Command:', commandData.category, '/', commandData.name);
+  console.log('🏰 Guild ID:', context.guild?.id || 'DM');
+  console.log('👤 User ID:', context.user?.id);
+  
   // Determinar locale
   let locale;
   
   if (context.guild) {
-    locale = await getGuildLocale(context.guild.id);
+    console.log('📡 Consultando idioma desde DB...');
+    try {
+      locale = await getGuildLocale(context.guild.id);
+      console.log('✅ Idioma obtenido de DB:', locale);
+    } catch (error) {
+      console.error('❌ Error obteniendo idioma:', error.message);
+      locale = DEFAULT_LOCALE;
+      console.log('⚠️  Usando idioma por defecto:', locale);
+    }
   } else {
+    console.log('💬 Comando en DM, usando idioma por defecto');
     locale = await getUserLocale(context.user.id);
   }
   
   // Si no se pudo determinar, usar default
   if (!locale) {
+    console.warn('⚠️  Locale es null/undefined, usando default');
     locale = DEFAULT_LOCALE;
   }
+  
+  console.log('🌍 Locale final seleccionado:', locale);
   
   // ========================================
   // CARGAR TRADUCCIONES EN ORDEN DE PRIORIDAD
   // ========================================
   
+  console.log('\n📚 Cargando archivos de traducción...');
+  
   const translations = {};
   
   // 1. Comunes globales (menor prioridad)
   const commonFiles = ['errors.json', 'permissions.json', 'validation.json'];
+  console.log('1️⃣  Cargando archivos comunes...');
   for (const file of commonFiles) {
-    Object.assign(translations, await loadJSON(`common/${file}`, locale));
+    const loaded = await loadJSON(`common/${file}`, locale);
+    const keysCount = Object.keys(loaded).length;
+    console.log(`   - common/${file}: ${keysCount} claves`);
+    Object.assign(translations, loaded);
   }
   
   // 2. Compartidas de la categoría (prioridad media)
   if (commandData.category) {
     const sharedPath = `commands/${commandData.category}/shared.json`;
-    Object.assign(translations, await loadJSON(sharedPath, locale));
+    console.log(`2️⃣  Cargando compartidas de categoría...`);
+    const loaded = await loadJSON(sharedPath, locale);
+    const keysCount = Object.keys(loaded).length;
+    console.log(`   - ${sharedPath}: ${keysCount} claves`);
+    Object.assign(translations, loaded);
   }
   
   // 3. Comando específico (mayor prioridad)
   if (commandData.category && commandData.name) {
     const commandPath = `commands/${commandData.category}/${commandData.name}.json`;
-    Object.assign(translations, await loadJSON(commandPath, locale));
+    console.log(`3️⃣  Cargando comando específico...`);
+    const loaded = await loadJSON(commandPath, locale);
+    const keysCount = Object.keys(loaded).length;
+    console.log(`   - ${commandPath}: ${keysCount} claves`);
+    
+    // 🔍 DEBUG: Mostrar estructura del archivo cargado
+    if (keysCount > 0) {
+      console.log('   📄 Estructura del archivo:');
+      console.log('      Top-level keys:', Object.keys(loaded).join(', '));
+      if (loaded.responses) {
+        console.log('      Keys en "responses":', Object.keys(loaded.responses).slice(0, 5).join(', '), '...');
+      }
+    }
+    
+    Object.assign(translations, loaded);
   }
+  
+  console.log(`\n📊 Total de claves cargadas: ${Object.keys(translations).length}`);
   
   // 4. Fallback a inglés si falta alguna key (solo si el locale no es inglés)
   let fallbackTranslations = {};
   if (locale !== FALLBACK_LOCALE) {
+    console.log('\n🔄 Cargando fallback en inglés...');
+    
     // Cargar las mismas rutas pero en inglés
     for (const file of commonFiles) {
       Object.assign(fallbackTranslations, await loadJSON(`common/${file}`, FALLBACK_LOCALE));
@@ -177,10 +261,14 @@ export async function createTranslator(commandData, context) {
       const commandPath = `commands/${commandData.category}/${commandData.name}.json`;
       Object.assign(fallbackTranslations, await loadJSON(commandPath, FALLBACK_LOCALE));
     }
+    
+    console.log(`   Fallback: ${Object.keys(fallbackTranslations).length} claves`);
   }
   
+  console.log('🔍 ========== TRANSLATOR DEBUG END ==========\n');
+  
   // ========================================
-  // FUNCIÓN TRADUCTORA
+  // FUNCIÓN TRADUCTORA CON BÚSQUEDA MEJORADA
   // ========================================
   
   /**
@@ -190,18 +278,43 @@ export async function createTranslator(commandData, context) {
    * @returns {string} Texto traducido
    */
   function t(key, params = {}) {
-    // Buscar traducción
-    let text = translations[key];
+    // 🔍 DEBUG: Búsqueda de traducción
+    const debugEnabled = process.env.DEBUG_TRANSLATIONS === 'true';
+    
+    if (debugEnabled) {
+      console.log(`\n🔎 Buscando traducción para: "${key}"`);
+    }
+    
+    // Buscar traducción con soporte para claves anidadas
+    let text = findNestedKey(translations, key);
+    
+    if (debugEnabled) {
+      if (text) {
+        console.log(`   ✅ Encontrado en traducciones principales`);
+        console.log(`   📝 Valor: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
+      } else {
+        console.log(`   ❌ NO encontrado en traducciones principales`);
+      }
+    }
     
     // Si no existe, usar fallback
-    if (!text && fallbackTranslations[key]) {
-      text = fallbackTranslations[key];
-      console.warn(`⚠️  Using fallback translation for key: ${key} (locale: ${locale})`);
+    if (!text && Object.keys(fallbackTranslations).length > 0) {
+      text = findNestedKey(fallbackTranslations, key);
+      if (text) {
+        if (debugEnabled) {
+          console.log(`   ⚠️  Usando fallback (inglés)`);
+        }
+        console.warn(`⚠️  Using fallback translation for key: ${key} (locale: ${locale})`);
+      }
     }
     
     // Si aún no existe, retornar clave con marcador
     if (!text) {
       console.error(`❌ Missing translation key: ${key} (locale: ${locale})`);
+      console.error(`   ℹ️  Available top-level keys:`, Object.keys(translations).slice(0, 10).join(', '));
+      if (translations.responses) {
+        console.error(`   ℹ️  Keys in "responses":`, Object.keys(translations.responses).slice(0, 10).join(', '));
+      }
       return `[Missing: ${key}]`;
     }
     
@@ -212,6 +325,52 @@ export async function createTranslator(commandData, context) {
     });
     
     return text;
+  }
+  
+  /**
+   * Buscar clave en objeto anidado
+   * Soporta:
+   * 1. Claves directas: { "error": "..." }
+   * 2. Claves en "responses": { "responses": { "error": "..." } }
+   * 3. Claves en "options": { "options": { "query": { "description": "..." } } }
+   * 4. Dot notation: "responses.error"
+   */
+  function findNestedKey(obj, key) {
+    // 1. Búsqueda directa
+    if (obj[key] && typeof obj[key] === 'string') {
+      return obj[key];
+    }
+    
+    // 2. Búsqueda en "responses" (estructura de comandos)
+    if (obj.responses && obj.responses[key] && typeof obj.responses[key] === 'string') {
+      return obj.responses[key];
+    }
+    
+    // 3. Búsqueda con dot notation (ej: "responses.title", "options.query.description")
+    if (key.includes('.')) {
+      const parts = key.split('.');
+      let current = obj;
+      
+      for (const part of parts) {
+        current = current?.[part];
+        if (!current) break;
+      }
+      
+      if (typeof current === 'string') {
+        return current;
+      }
+    }
+    
+    // 4. Búsqueda recursiva en primer nivel (para compatibilidad)
+    for (const topKey of Object.keys(obj)) {
+      if (typeof obj[topKey] === 'object' && obj[topKey] !== null) {
+        if (obj[topKey][key] && typeof obj[topKey][key] === 'string') {
+          return obj[topKey][key];
+        }
+      }
+    }
+    
+    return null;
   }
   
   // Adjuntar metadata útil para debugging

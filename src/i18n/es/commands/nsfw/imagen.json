@@ -1,0 +1,21 @@
+{
+  "name": "imagen",
+  "description": "Buscar imágenes NSFW en Rule34",
+  "options": {
+    "tags": {
+      "description": "Etiquetas de búsqueda (separadas por comas)"
+    }
+  },
+  "responses": {
+    "guild_only": "❌ Este comando solo puede usarse en servidores.",
+    "nsfw_only": "🔞 Este comando solo puede usarse en canales NSFW.",
+    "api_not_configured": "❌ Las credenciales de la API no están configuradas. Contacta al dueño del bot.",
+    "no_tags": "❌ Por favor proporciona al menos una etiqueta.",
+    "no_images": "📭 No se encontraron imágenes para: **{tags}**\n\nIntenta diferentes etiquetas o revisa la ortografía.",
+    "page_title": "🖼️ Imagen {current}/{total}",
+    "image_info": "**Etiquetas:** {tags}\n**Puntuación:** {score} ⭐\n**ID:** {id}\n**Resolución:** {width}x{height}",
+    "footer": "Total de imágenes: {count} | Usa los botones para navegar",
+    "not_your_interaction": "❌ Esta no es tu búsqueda. Usa `/imagen` para iniciar la tuya.",
+    "unexpected_error": "❌ Ocurrió un error inesperado. Por favor intenta de nuevo."
+  }
+}

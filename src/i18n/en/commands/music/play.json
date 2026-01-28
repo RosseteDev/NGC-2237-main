@@ -1,37 +1,30 @@
 {
-  "name": "play",
-  "description": "Play a song or playlist",
-  "aliases": ["p"],
-  "metadata": {
-    "contexts": ["guild"],
-    "guildOnly": true,
-    "requiresVoiceConnection": true,
-    "cooldown": 3,
-    "permissions": {
-      "user": [],
-      "bot": ["Connect", "Speak"]
-    }
+  "command": {
+    "name": "play",
+    "description": "Reproduce una canción o una lista de reproducción"
   },
   "options": {
     "query": {
-      "type": "string",
-      "description": "Song name or URL",
-      "required": true,
-      "autocomplete": true
+      "description": "Nombre de la canción o URL"
     }
   },
   "responses": {
-    "music_system_unavailable": "❌ Music system is unavailable",
-    "no_music_nodes": "❌ No music nodes available",
-    "guild_locked": "🔒 **The bot was recently disconnected.**\n\nDiscord hasn't fully released the voice connection yet.\n\n**Options:**\n• Wait a few seconds and try again\n• Use `/disconnect` to force cleanup",
-    "connection_error": "❌ Couldn't connect: {error}\n\n**If the error persists:**\n• Use `/disconnect` to clean the connection\n• Verify I have Connect and Speak permissions",
-    "playback_stopped_no_player": "⚠️ Playback stopped: connection lost",
-    "playback_stopped_disconnected": "⚠️ Playback stopped: bot disconnected from voice channel",
-    "failed_to_play": "❌ Failed to play track",
-    "track_error": "⚠️ Error: **{title}**",
-    "connection_closed": "⚠️ **Playback stopped: connection closed.**\n\nTo play music again:\n• Use `q!p <song>` when Discord has fully disconnected me\n• Or use `/disconnect` first if there are issues",
-    "general_error": "❌ An error occurred while processing your request",
-    "added": "✅ **{title}** added to queue at position **{position}**",
-    "playlist_added": "✅ Added **{count}** tracks from playlist **{name}**"
+    "no_voice": "❌ Debes estar en un canal de voz para usar este comando",
+    "music_system_unavailable": "❌ El sistema de música no está disponible",
+    "no_music_nodes": "❌ No hay nodos de música disponibles",
+    "guild_locked": "🔒 **El bot fue desconectado recientemente.**\n\nDiscord aún no ha liberado completamente la conexión de voz.\n\n**Opciones:**\n• Espera unos segundos e inténtalo de nuevo\n• Usa `/disconnect` para forzar la limpieza",
+    "connection_error": "❌ No se pudo conectar: {error}\n\n**Si el error persiste:**\n• Usa `/disconnect` para limpiar la conexión\n• Verifica que tenga permisos para Conectarse y Hablar",
+    "no_results": "❌ No se encontraron resultados para **{query}**",
+    "music_in_other_channel": "❌ Ya estoy reproduciendo música en otro canal de voz",
+    "no_connect_permission": "❌ No tengo permiso para **Conectarme** a este canal de voz",
+    "no_speak_permission": "❌ No tengo permiso para **Hablar** en este canal de voz",
+    "added": "✅ **{title}** añadida a la cola en la posición **{position}**",
+    "playlist_added": "✅ Se añadieron **{count}** canciones de la lista **{name}**",
+    "playback_stopped_no_player": "⚠️ Reproducción detenida: conexión perdida",
+    "playback_stopped_disconnected": "⚠️ Reproducción detenida: el bot fue desconectado del canal de voz",
+    "failed_to_play": "❌ No se pudo reproducir la pista",
+    "track_error": "⚠️ Error al reproducir: **{title}**",
+    "connection_closed": "⚠️ **Reproducción detenida: conexión cerrada.**\n\nPara reproducir música otra vez:\n• Usa `q!p <canción>` cuando Discord me haya desconectado por completo\n• O usa `/disconnect` primero si hay problemas",
+    "general_error": "❌ Ocurrió un error al procesar tu solicitud"
   }
 }

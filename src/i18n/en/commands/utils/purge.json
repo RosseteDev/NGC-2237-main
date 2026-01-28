@@ -1,0 +1,27 @@
+{
+  "name": "purga",
+  "description": "Borra mensajes de un usuario",
+  "options": {
+    "user": {
+      "description": "Usuario objetivo"
+    },
+    "limit": {
+      "description": "Mensajes a escanear (1-1000)"
+    }
+  },
+  "responses": {
+    "invalid_channel": "❌ Este comando solo puede usarse en canales de texto.",
+    "no_user_permission": "❌ Necesitas el permiso `Gestionar Mensajes` para usar este comando.",
+    "no_bot_permission": "❌ No tengo permiso para gestionar mensajes en este canal.",
+    "starting": "🔍 Escaneando mensajes...",
+    "no_messages": "📭 No se encontraron mensajes de **{user}** en los últimos {limit} mensajes.",
+    "processing": "⏳ Encontrados **{count}** mensajes de **{user}**.\n\nBorrando... Esto puede tomar un momento.",
+    "done": "✅ **Purga Completa**",
+    "stats": "**Usuario:** {user}\n**Mensajes escaneados:** {checked}\n**Mensajes borrados:** {deleted}",
+    "time": "Tiempo",
+    "error_general": "❌ Ocurrió un error inesperado al borrar mensajes.",
+    "error_permissions": "❌ Perdí permisos durante el proceso de borrado.",
+    "error_access": "❌ No tengo acceso a este canal.",
+    "error_rate_limit": "⚠️ Rate limit de Discord. Intenta de nuevo en unos segundos."
+  }
+}

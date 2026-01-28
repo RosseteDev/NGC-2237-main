@@ -1,0 +1,37 @@
+{
+  "name": "lenguaje",
+  "description": "Cambiar el idioma del bot en este servidor",
+  "aliases": ["lang"],
+  "metadata": {
+    "contexts": ["guild"],
+    "guildOnly": true,
+    "cooldown": 5,
+    "permissions": {
+      "user": ["ManageGuild"],
+      "bot": []
+    }
+  },
+  "options": {
+    "lang": {
+      "type": "string",
+      "description": "Idioma a establecer",
+      "required": true,
+      "choices": [
+        {
+          "name": "Español",
+          "value": "es"
+        },
+        {
+          "name": "English",
+          "value": "en"
+        }
+      ]
+    }
+  },
+  "responses": {
+    "updated_title": "🌐 Idioma actualizado",
+    "updated_description": "El idioma del servidor se cambió correctamente a **{lang}**.\n\n💡 *Este cambio afecta a todos los comandos del bot en este servidor.*",
+    "error_title": "❌ Error al cambiar el idioma",
+    "error_description": "Ocurrió un error al guardar el idioma.\n\nInténtalo de nuevo más tarde."
+  }
+}

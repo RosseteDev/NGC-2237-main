@@ -1,0 +1,21 @@
+{
+  "name": "video",
+  "description": "Buscar videos NSFW en Rule34",
+  "options": {
+    "tags": {
+      "description": "Etiquetas de búsqueda (separadas por comas)"
+    }
+  },
+  "responses": {
+    "guild_only": "❌ Este comando solo puede usarse en servidores.",
+    "nsfw_only": "🔞 Este comando solo puede usarse en canales NSFW.",
+    "api_not_configured": "❌ Las credenciales de la API no están configuradas. Contacta al dueño del bot.",
+    "no_tags": "❌ Por favor proporciona al menos una etiqueta.",
+    "no_videos": "📭 No se encontraron videos para: **{tags}**\n\nIntenta diferentes etiquetas o revisa la ortografía.",
+    "page_title": "🎥 Video {current}/{total}",
+    "video_info": "**Etiquetas:** {tags}\n**Puntuación:** {score} ⭐\n**ID:** {id}\n**Resolución:** {width}x{height}\n\n🔗 **[Ver Video]({url})**",
+    "footer": "Total de videos: {count} | Usa los botones para navegar",
+    "not_your_interaction": "❌ Esta no es tu búsqueda. Usa `/video` para iniciar la tuya.",
+    "unexpected_error": "❌ Ocurrió un error inesperado. Por favor intenta de nuevo."
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "estadisticascache",
+  "description": "Ver estadísticas de rendimiento del caché",
+  "responses": {
+    "title": "📊 Estadísticas de Caché",
+    "description": "Métricas de rendimiento de la base de datos",
+    "hit_rate": "Tasa de Aciertos",
+    "misses": "Fallos de Caché",
+    "mode": "Modo",
+    "sync_queue": "Cola de Sincronización",
+    "pending": "pendientes",
+    "status": "Estado",
+    "online": "✅ En línea",
+    "offline": "❌ Fuera de línea"
+  }
+}
