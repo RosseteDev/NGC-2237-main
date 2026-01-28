@@ -1,0 +1,37 @@
+{
+  "name": "play",
+  "description": "Play a song or playlist",
+  "aliases": ["p"],
+  "metadata": {
+    "contexts": ["guild"],
+    "guildOnly": true,
+    "requiresVoiceConnection": true,
+    "cooldown": 3,
+    "permissions": {
+      "user": [],
+      "bot": ["Connect", "Speak"]
+    }
+  },
+  "options": {
+    "query": {
+      "type": "string",
+      "description": "Song name or URL",
+      "required": true,
+      "autocomplete": true
+    }
+  },
+  "responses": {
+    "music_system_unavailable": "❌ Music system is unavailable",
+    "no_music_nodes": "❌ No music nodes available",
+    "guild_locked": "🔒 **The bot was recently disconnected.**\n\nDiscord hasn't fully released the voice connection yet.\n\n**Options:**\n• Wait a few seconds and try again\n• Use `/disconnect` to force cleanup",
+    "connection_error": "❌ Couldn't connect: {error}\n\n**If the error persists:**\n• Use `/disconnect` to clean the connection\n• Verify I have Connect and Speak permissions",
+    "playback_stopped_no_player": "⚠️ Playback stopped: connection lost",
+    "playback_stopped_disconnected": "⚠️ Playback stopped: bot disconnected from voice channel",
+    "failed_to_play": "❌ Failed to play track",
+    "track_error": "⚠️ Error: **{title}**",
+    "connection_closed": "⚠️ **Playback stopped: connection closed.**\n\nTo play music again:\n• Use `q!p <song>` when Discord has fully disconnected me\n• Or use `/disconnect` first if there are issues",
+    "general_error": "❌ An error occurred while processing your request",
+    "added": "✅ **{title}** added to queue at position **{position}**",
+    "playlist_added": "✅ Added **{count}** tracks from playlist **{name}**"
+  }
+}

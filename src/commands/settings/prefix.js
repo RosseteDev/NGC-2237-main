@@ -2,6 +2,7 @@
 
 import { EmbedBuilder } from "discord.js";
 import { buildCommand } from "../../utils/commandbuilder.js";
+import { createTranslator } from "../../utils/TranslatorHelper.js";
 import { db } from "../../database/ResilientDatabaseManager.js";
 
 const DEFAULT_PREFIX = "r!";
@@ -9,7 +10,8 @@ const DEFAULT_PREFIX = "r!";
 export const data = buildCommand("settings", "prefix");
 
 export async function execute(context) {
-  const t = await context.getTranslator();
+  const t = await createTranslator(data, context);
+  
   let newPrefix = context.options.getString("new_prefix");
   const currentPrefix = await db.getGuildPrefix(context.guild?.id);
 
@@ -17,20 +19,22 @@ export async function execute(context) {
   if (!newPrefix) {
     const embed = new EmbedBuilder()
       .setColor(0x5865F2)
-      .setTitle("📌 Prefix Actual")
+      .setTitle(t("current_prefix_title"))
       .setDescription(
-        `El prefix actual es: \`${currentPrefix}\`\n` +
-        `Prefix por defecto: \`${DEFAULT_PREFIX}\`\n\n` +
-        `**Ejemplos:**\n` +
-        `• \`${currentPrefix}play lofi\`\n` +
-        `• \`${currentPrefix}help\`\n`
+        t("current_prefix_description", {
+          currentPrefix: currentPrefix,
+          defaultPrefix: DEFAULT_PREFIX
+        })
       )
       .addFields({
-        name: "💡 Cambiar prefix",
-        value: `Usa: \`${currentPrefix}prefix <nuevo_prefix>\``
+        name: t("how_to_change"),
+        value: t("how_to_change_value", { currentPrefix: currentPrefix })
       })
       .setFooter({ 
-        text: `Para restaurar: ${currentPrefix}prefix ${DEFAULT_PREFIX.replace('!', '')}` 
+        text: t("restore_footer", {
+          currentPrefix: currentPrefix,
+          defaultPrefix: DEFAULT_PREFIX.replace('!', '')
+        })
       })
       .setTimestamp();
 
@@ -40,7 +44,7 @@ export async function execute(context) {
   // Cambiar prefix - verificar permisos
   if (!context.member?.permissions.has("ManageGuild")) {
     return context.reply({
-      content: "❌ Necesitas el permiso `Gestionar Servidor` para cambiar el prefix",
+      content: t("no_permission"),
       ephemeral: true
     });
   }
@@ -56,21 +60,21 @@ export async function execute(context) {
   // Validaciones
   if (newPrefix.length > 10) {
     return context.reply({
-      content: "❌ El prefix no puede tener más de 10 caracteres",
+      content: t("prefix_too_long"),
       ephemeral: true
     });
   }
 
   if (newPrefix.includes(" ")) {
     return context.reply({
-      content: "❌ El prefix no puede contener espacios",
+      content: t("prefix_has_spaces"),
       ephemeral: true
     });
   }
 
   if (newPrefix.startsWith("/")) {
     return context.reply({
-      content: "❌ El prefix no puede empezar con `/`",
+      content: t("prefix_starts_with_slash"),
       ephemeral: true
     });
   }
@@ -82,25 +86,28 @@ export async function execute(context) {
     // ✅ CRÍTICO: Invalidar cache del prefix handler
     try {
       const { invalidatePrefixCache } = await import("../../handlers/prefixHandler.js");
-      invalidatePrefixCache(context.guild.id);
+      const invalidated = invalidatePrefixCache(context.guild.id);
+      console.log(`✅ Cache de prefix invalidado para ${context.guild.id}: ${invalidated}`);
     } catch (error) {
-      // Si no existe el handler, no importa
-      console.debug("No se pudo invalidar cache (handler no encontrado)");
+      console.error("❌ ERROR invalidando cache:", error.message);
+      console.error("Stack:", error.stack);
+      // Aún así continuar - el prefix se guardó en DB
     }
 
     const embed = new EmbedBuilder()
       .setColor(0x00ff00)
-      .setTitle("✅ Prefix Actualizado")
+      .setTitle(t("prefix_updated_title"))
       .setDescription(
-        `**Anterior:** \`${currentPrefix}\`\n` +
-        `**Nuevo:** \`${newPrefix}\`\n\n` +
-        `**Ejemplos:**\n` +
-        `• \`${newPrefix}play lofi\`\n` +
-        `• \`${newPrefix}help\`\n\n` +
-        `💡 *Si no agregaste un símbolo al final, se añadió \`!\` automáticamente*`
+        t("prefix_updated_description", {
+          oldPrefix: currentPrefix,
+          newPrefix: newPrefix
+        })
       )
       .setFooter({ 
-        text: `Para restaurar: ${newPrefix}prefix ${DEFAULT_PREFIX.replace('!', '')}` 
+        text: t("restore_footer", {
+          currentPrefix: newPrefix,
+          defaultPrefix: DEFAULT_PREFIX.replace('!', '')
+        })
       })
       .setTimestamp();
 
@@ -109,7 +116,7 @@ export async function execute(context) {
   } catch (error) {
     console.error("Error guardando prefix:", error);
     return context.reply({
-      content: "❌ Error al guardar el prefix. Intenta de nuevo.",
+      content: t("error_saving"),
       ephemeral: true
     });
   }

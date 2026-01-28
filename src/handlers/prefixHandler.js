@@ -1,230 +1,71 @@
 // src/handlers/prefixHandler.js
+// ============================================
+// PREFIX HANDLER CON CACHE INVALIDABLE
+// ============================================
 
-import { db } from "../database/manager.js";
-import { prefixChecker } from "../utils/PrefixChecker.js";
+import { EmbedBuilder } from "discord.js";
+import { db } from "../database/ResilientDatabaseManager.js";
+import { createLogger } from "../utils/Logger.js";
 
-/**
- * Parser de argumentos mejorado
- */
-function parseArguments(args, commandOptions) {
-  if (!commandOptions || commandOptions.length === 0) {
-    return {};
-  }
+const logger = createLogger("prefix");
 
-  const parsed = {};
-  let currentIndex = 0;
+// ============================================
+// CACHE DE PREFIXES
+// ============================================
 
-  for (let i = 0; i < commandOptions.length; i++) {
-    const option = commandOptions[i];
-    const isLastOption = i === commandOptions.length - 1;
-
-    if (currentIndex >= args.length) {
-      parsed[option.name] = null;
-      continue;
-    }
-
-    switch (option.type) {
-      case 3: // STRING
-      case "string":
-        if (isLastOption) {
-          parsed[option.name] = args.slice(currentIndex).join(' ');
-          currentIndex = args.length;
-        } else {
-          parsed[option.name] = args[currentIndex];
-          currentIndex++;
-        }
-        break;
-
-      case 4: // INTEGER
-      case "integer":
-        const intVal = parseInt(args[currentIndex], 10);
-        parsed[option.name] = isNaN(intVal) ? null : intVal;
-        currentIndex++;
-        break;
-
-      case 10: // NUMBER
-      case "number":
-        const numVal = parseFloat(args[currentIndex]);
-        parsed[option.name] = isNaN(numVal) ? null : numVal;
-        currentIndex++;
-        break;
-
-      case 5: // BOOLEAN
-      case "boolean":
-        const boolVal = args[currentIndex]?.toLowerCase();
-        parsed[option.name] = ["true", "yes", "si", "sí", "1", "on"].includes(boolVal);
-        currentIndex++;
-        break;
-
-      default:
-        parsed[option.name] = args[currentIndex];
-        currentIndex++;
-    }
-  }
-
-  return parsed;
-}
-
-/**
- * Buscar comando por nombre o alias
- */
-function findCommand(client, commandName) {
-  let command = client.commands.get(commandName);
-  if (command) return { command, name: commandName };
-
-  for (const [cmdName, cmd] of client.commands.entries()) {
-    const aliases = [
-      ...(cmd.aliases || []),
-      ...(cmd.data?.aliases || [])
-    ].map(a => a.toLowerCase());
-
-    if (aliases.includes(commandName)) {
-      return { command: cmd, name: cmdName };
-    }
-
-    const dataName = cmd.data?.name?.toLowerCase();
-    if (dataName && dataName === commandName) {
-      return { command: cmd, name: cmdName };
-    }
-  }
-
-  return null;
-}
-
-/**
- * Cache de prefixes en memoria
- */
 const prefixCache = new Map();
-const PREFIX_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutos
+const DEFAULT_PREFIX = "r!";
 
 /**
- * Obtener prefix del servidor
+ * Obtener prefix con cache
  */
-async function getPrefix(guildId) {
-  const defaultPrefix = process.env.DEFAULT_PREFIX || "r!";
+async function getGuildPrefix(guildId) {
+  if (!guildId) return DEFAULT_PREFIX;
   
-  if (!guildId) {
-    return defaultPrefix;
-  }
-  
-  // 1. Cache hit
+  // Cache hit
   const cached = prefixCache.get(guildId);
   if (cached && Date.now() < cached.expires) {
     return cached.value;
   }
   
-  // 2. Leer de DB (ResilientDatabaseManager maneja fallbacks)
+  // Cache miss - consultar DB
   try {
     const prefix = await Promise.race([
       db.getGuildPrefix(guildId),
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Timeout")), 1000)
+        setTimeout(() => reject(new Error("Timeout")), 800)
       )
     ]);
     
-    // Cachear por 5 minutos
+    // Cachear resultado
     prefixCache.set(guildId, {
       value: prefix,
-      expires: Date.now() + PREFIX_CACHE_TTL
+      expires: Date.now() + CACHE_TTL
     });
     
     return prefix;
     
   } catch (error) {
-    // Fallback
+    logger.debug(`Prefix fetch failed for ${guildId}, usando default`);
+    
+    // Cachear default por poco tiempo
     prefixCache.set(guildId, {
-      value: defaultPrefix,
+      value: DEFAULT_PREFIX,
       expires: Date.now() + 30_000
     });
     
-    return defaultPrefix;
+    return DEFAULT_PREFIX;
   }
 }
 
 /**
- * Invalidar cache de prefix
+ * ✅ CRÍTICO: Invalidar cache cuando se actualiza prefix
  */
 export function invalidatePrefixCache(guildId) {
-  prefixCache.delete(guildId);
-  console.log(`🔄 Prefix cache invalidado para guild ${guildId}`);
-}
-
-/**
- * Stats de cache
- */
-export function getPrefixCacheStats() {
-  return {
-    size: prefixCache.size,
-    guilds: Array.from(prefixCache.keys())
-  };
-}
-
-/**
- * Handler principal de prefix commands
- */
-export async function handlePrefixCommand(message, client) {
-  if (message.author.bot || !message.content || !message.guild) return;
-
-  // Verificación ultrarrápida
-  if (!prefixChecker.couldBeCommand(message.content)) {
-    return;
-  }
-
-  try {
-    // Obtener prefix
-    const prefix = await getPrefix(message.guild.id);
-
-    let usedPrefix = null;
-    let content = message.content;
-
-    if (message.content.startsWith(prefix)) {
-      usedPrefix = prefix;
-      content = message.content.slice(prefix.length).trim();
-    } else if (message.mentions.has(client.user.id)) {
-      usedPrefix = `<@${client.user.id}>`;
-      content = message.content
-        .replace(new RegExp(`<@!?${client.user.id}>`), "")
-        .trim();
-    }
-
-    if (!usedPrefix || !content) return;
-
-    const rawArgs = content.split(/\s+/);
-    const commandInput = rawArgs.shift()?.toLowerCase();
-
-    if (!commandInput) return;
-
-    const result = findCommand(client, commandInput);
-    if (!result) return;
-
-    const { command, name } = result;
-
-    const commandOptions = command.data?.options || [];
-    const parsedArgs = parseArguments(rawArgs, commandOptions);
-    
-    parsedArgs._commandName = name;
-    parsedArgs._raw = rawArgs;
-
-    console.log(`[PREFIX] ✅ ${message.author.tag} ejecutó ${prefix}${commandInput}`);
-
-    await client.commandHandler.execute(message, parsedArgs, name);
-
-  } catch (error) {
-    if (error.message?.includes("ETIMEDOUT") || 
-        error.message?.includes("ECONNREFUSED")) {
-      console.warn("⚠️ DB timeout en prefix handler");
-      return;
-    }
-    
-    console.error("❌ Error en prefix command:", error);
-    
-    try {
-      await message.reply({
-        content: `❌ Error: ${error.message}`,
-        allowedMentions: { repliedUser: false }
-      });
-    } catch {}
-  }
+  const deleted = prefixCache.delete(guildId);
+  logger.debug(`Cache invalidado para ${guildId}: ${deleted}`);
+  return deleted;
 }
 
 /**
@@ -234,14 +75,193 @@ setInterval(() => {
   const now = Date.now();
   let cleaned = 0;
   
-  for (const [key, data] of prefixCache.entries()) {
+  for (const [guildId, data] of prefixCache.entries()) {
     if (now > data.expires) {
-      prefixCache.delete(key);
+      prefixCache.delete(guildId);
       cleaned++;
     }
   }
   
   if (cleaned > 0) {
-    console.log(`🧹 Prefix cache cleanup: ${cleaned} items expirados`);
+    logger.debug(`Prefix cache cleanup: ${cleaned} items expirados`);
   }
 }, 5 * 60 * 1000);
+
+/**
+ * Stats del cache
+ */
+export function getPrefixCacheStats() {
+  return {
+    size: prefixCache.size,
+    guilds: Array.from(prefixCache.keys())
+  };
+}
+
+// ============================================
+// UTILIDADES
+// ============================================
+
+/**
+ * Formatear duración en ms a MM:SS o HH:MM:SS
+ */
+function formatDuration(ms) {
+  const seconds = Math.floor(ms / 1000);
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  
+  if (mins >= 60) {
+    const hours = Math.floor(mins / 60);
+    const remainMins = mins % 60;
+    return `${hours}:${remainMins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }
+  
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+// ============================================
+// HANDLER DE COMANDOS CON PREFIX
+// ============================================
+
+export async function handlePrefixCommand(message, client) {
+  // Ignorar bots
+  if (message.author.bot) return;
+  
+  // Solo en servidores (DMs usan solo /)
+  if (!message.guild) return;
+  
+  // Obtener prefix del servidor
+  const prefix = await getGuildPrefix(message.guild.id);
+  
+  // Verificar si el mensaje empieza con el prefix
+  if (!message.content.startsWith(prefix)) return;
+  
+  // Parsear comando y args
+  const args = message.content.slice(prefix.length).trim().split(/\s+/);
+  const commandName = args.shift()?.toLowerCase();
+  
+  if (!commandName) return;
+  
+  // Buscar comando (por nombre o alias)
+  const command = client.commands.get(commandName) || 
+    client.commands.find(cmd => cmd.data?.aliases?.includes(commandName));
+  
+  if (!command) return;
+  
+  logger.debug(`Prefix command: ${commandName} (prefix: ${prefix})`);
+  
+  // Ejecutar comando
+  try {
+    // Crear contexto compatible
+    const context = {
+      type: "prefix",
+      client,  // ✅ CRÍTICO: Necesario para comandos de música
+      message,
+      guild: message.guild,
+      channel: message.channel,
+      member: message.member,
+      user: message.author,
+      commandName,
+      args,
+      
+      // Métodos helper
+      reply: async (options) => {
+        context.replied = true;
+        if (typeof options === "string") {
+          return message.reply(options);
+        }
+        return message.reply(options);
+      },
+      
+      deferReply: async () => {
+        context.deferred = true;
+        await message.channel.sendTyping();
+      },
+      
+      editReply: async (options) => {
+        context.replied = true;
+        // Para prefix commands, enviamos nuevo mensaje
+        if (typeof options === "string") {
+          return message.channel.send(options);
+        }
+        return message.channel.send(options);
+      },
+      
+      followUp: async (options) => {
+        if (typeof options === "string") {
+          return message.channel.send(options);
+        }
+        return message.channel.send(options);
+      },
+      
+      // Translator
+      getTranslator: async () => {
+        const { useLang } = await import("../localization/Translator.js");
+        return useLang({ guildId: message.guild?.id, locale: "en" });
+      },
+      
+      // Options getter (simulado)
+      options: {
+        getString: (name, required = false) => {
+          // Para comandos de música, retornar todos los args como query
+          if (name === "query" && args.length > 0) {
+            return args.join(" ");
+          }
+          
+          const value = args[0] || null;
+          
+          if (required && !value) {
+            throw new Error(`Missing required argument: ${name}`);
+          }
+          
+          return value;
+        },
+        getInteger: (name) => {
+          const val = parseInt(args[0]);
+          return isNaN(val) ? null : val;
+        },
+        getUser: (name) => message.mentions.users.first() || null,
+        getChannel: (name) => message.mentions.channels.first() || null,
+        getRole: (name) => message.mentions.roles.first() || null
+      },
+      
+      // ✅ CRÍTICO: Embeds helper para comandos de música
+      embeds: {
+        music: (track) => {
+          return new EmbedBuilder()
+            .setColor(0x1DB954)
+            .setTitle("🎵 Now Playing")
+            .setDescription(`**${track.info.title}**`)
+            .addFields(
+              { name: "Artist", value: track.info.author, inline: true },
+              { name: "Duration", value: formatDuration(track.info.length), inline: true }
+            )
+            .setTimestamp();
+        }
+      },
+      
+      // ✅ Flags de estado para manejo de respuestas
+      deferred: false,
+      replied: false
+    };
+    
+    await command.execute(context);
+    
+  } catch (error) {
+    logger.error(`Error ejecutando ${commandName}:`, error);
+    
+    try {
+      await message.reply({
+        content: "❌ Hubo un error ejecutando este comando.",
+        allowedMentions: { repliedUser: false }
+      });
+    } catch (replyError) {
+      logger.error("No se pudo enviar mensaje de error", replyError);
+    }
+  }
+}
+
+// ============================================
+// EXPORTS
+// ============================================
+
+export default handlePrefixCommand;

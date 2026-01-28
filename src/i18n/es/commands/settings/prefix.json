@@ -1,0 +1,35 @@
+{
+  "name": "prefix",
+  "description": "Ver o cambiar el prefijo del bot para este servidor",
+  "aliases": [],
+  "metadata": {
+    "contexts": ["guild"],
+    "guildOnly": true,
+    "cooldown": 5,
+    "permissions": {
+      "user": [],
+      "bot": []
+    }
+  },
+  "options": {
+    "new_prefix": {
+      "type": "string",
+      "description": "Nuevo prefijo a establecer (dejar vacío para ver el actual)",
+      "required": false
+    }
+  },
+  "responses": {
+    "current_prefix_title": "📌 Prefijo Actual",
+    "current_prefix_description": "El prefijo actual es: `{currentPrefix}`\nPrefijo por defecto: `{defaultPrefix}`\n\n**Ejemplos:**\n• `{currentPrefix}play lofi`\n• `{currentPrefix}help`",
+    "how_to_change": "💡 Cambiar prefijo",
+    "how_to_change_value": "Usa: `{currentPrefix}prefix <nuevo_prefijo>`",
+    "restore_footer": "Para restaurar: {currentPrefix}prefix {defaultPrefix}",
+    "no_permission": "❌ Necesitas el permiso `Gestionar Servidor` para cambiar el prefijo",
+    "prefix_too_long": "❌ El prefijo no puede tener más de 10 caracteres",
+    "prefix_has_spaces": "❌ El prefijo no puede contener espacios",
+    "prefix_starts_with_slash": "❌ El prefijo no puede empezar con `/`",
+    "prefix_updated_title": "✅ Prefijo Actualizado",
+    "prefix_updated_description": "**Anterior:** `{oldPrefix}`\n**Nuevo:** `{newPrefix}`\n\n**Ejemplos:**\n• `{newPrefix}play lofi`\n• `{newPrefix}help`\n\n💡 *Si no agregaste un símbolo al final, se añadió `!` automáticamente*",
+    "error_saving": "❌ Error al guardar el prefijo. Intenta de nuevo."
+  }
+}

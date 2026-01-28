@@ -1,0 +1,7 @@
+{
+  "no_voice": "❌ You need to be in a voice channel",
+  "music_in_other_channel": "❌ Music is already playing in another voice channel",
+  "no_connect_permission": "❌ I don't have permission to **Connect** to that voice channel",
+  "no_speak_permission": "❌ I don't have permission to **Speak** in that voice channel",
+  "no_results": "❌ No results found for: **{query}**"
+}

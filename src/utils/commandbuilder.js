@@ -1,7 +1,7 @@
 // src/utils/commandbuilder.js
 
 import { SlashCommandBuilder, ChannelType, PermissionFlagsBits } from "discord.js";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { CommandMetadata } from "./CommandMetadata.js";
@@ -13,6 +13,9 @@ const configCache = new Map();
 
 /**
  * Cargar configuración de comando desde JSON
+ * Soporta AMBAS estructuras:
+ * - NUEVA: /commands/music/play.json (archivo separado por comando)
+ * - VIEJA: /commands/music.json con { "play": {...} } (todo junto)
  */
 function loadCommandConfig(category, commandName, lang = "en") {
   const cacheKey = `${lang}:${category}:${commandName}`;
@@ -21,30 +24,105 @@ function loadCommandConfig(category, commandName, lang = "en") {
     return configCache.get(cacheKey);
   }
   
-  try {
-    const configPath = join(
-      __dirname,
-      "..",
-      "i18n",
-      lang,
-      "commands",
-      `${category}.json`
-    );
-
-    const data = JSON.parse(readFileSync(configPath, "utf-8"));
-    const config = data[commandName];
-    
-    if (!config) {
-      throw new Error(`Comando "${commandName}" no encontrado en ${configPath}`);
+  // ========================================
+  // ESTRATEGIA 1: Archivo separado (NUEVA)
+  // /i18n/en/commands/music/play.json
+  // ========================================
+  
+  const separatePath = join(
+    __dirname,
+    "..",
+    "i18n",
+    lang,
+    "commands",
+    category,
+    `${commandName}.json`
+  );
+  
+  if (existsSync(separatePath)) {
+    try {
+      const config = JSON.parse(readFileSync(separatePath, "utf-8"));
+      configCache.set(cacheKey, config);
+      return config;
+    } catch (error) {
+      console.error(`❌ Error parseando ${separatePath}:`, error.message);
     }
-    
-    configCache.set(cacheKey, config);
-    return config;
-    
-  } catch (error) {
-    console.error(`❌ Error cargando config para ${category}/${commandName}:`, error.message);
-    return null;
   }
+  
+  // ========================================
+  // ESTRATEGIA 2: Archivo combinado (VIEJA)
+  // /i18n/en/commands/music.json
+  // ========================================
+  
+  const combinedPath = join(
+    __dirname,
+    "..",
+    "i18n",
+    lang,
+    "commands",
+    `${category}.json`
+  );
+  
+  if (existsSync(combinedPath)) {
+    try {
+      const data = JSON.parse(readFileSync(combinedPath, "utf-8"));
+      const config = data[commandName];
+      
+      if (!config) {
+        console.warn(`⚠️  Comando "${commandName}" no encontrado en ${combinedPath}`);
+        return null;
+      }
+      
+      configCache.set(cacheKey, config);
+      return config;
+    } catch (error) {
+      console.error(`❌ Error parseando ${combinedPath}:`, error.message);
+    }
+  }
+  
+  // ========================================
+  // ESTRATEGIA 3: Archivo shared.json (FALLBACK)
+  // /i18n/en/commands/music/shared.json
+  // ========================================
+  
+  const sharedPath = join(
+    __dirname,
+    "..",
+    "i18n",
+    lang,
+    "commands",
+    category,
+    "shared.json"
+  );
+  
+  if (existsSync(sharedPath)) {
+    try {
+      const config = JSON.parse(readFileSync(sharedPath, "utf-8"));
+      console.warn(
+        `⚠️  Usando shared.json para ${category}/${commandName} - ` +
+        `considera crear ${commandName}.json para mejor organización`
+      );
+      configCache.set(cacheKey, config);
+      return config;
+    } catch (error) {
+      console.error(`❌ Error parseando ${sharedPath}:`, error.message);
+    }
+  }
+  
+  // ========================================
+  // ERROR: No se encontró ninguna configuración
+  // ========================================
+  
+  console.error(
+    `❌ No se encontró configuración para ${category}/${commandName} en idioma ${lang}\n` +
+    `Rutas intentadas:\n` +
+    `  1. ${separatePath} (archivo separado - RECOMENDADO)\n` +
+    `  2. ${combinedPath} (archivo combinado - LEGACY)\n` +
+    `  3. ${sharedPath} (shared - FALLBACK)\n\n` +
+    `💡 Crea uno de estos archivos con la estructura del comando.`
+  );
+  
+  return null;
 }
 
 /**
@@ -166,8 +244,8 @@ function addOption(command, name, enConfig, esConfig) {
     // Localizaciones
     if (esConfig) {
       option.setNameLocalizations({
-        "es-ES": esConfig.name,
-        "es-419": esConfig.name
+        "es-ES": esConfig.name || name,
+        "es-419": esConfig.name || name
       });
       
       option.setDescriptionLocalizations({

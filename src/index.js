@@ -88,17 +88,3 @@ process.on("uncaughtException", (error) => {
 
 logger.info("🚀 Iniciando bot...");
 client.login(process.env.DISCORD_TOKEN);
-
-const GUILD_ID = "1455779364720607344";
-
-setTimeout(async () => {
-  console.log("🔍 Testing prefix...");
-  
-  const prefix = await db.getGuildPrefix(GUILD_ID);
-  console.log("DB retorna:", prefix);
-  
-  const sqlite = db.local.stmts.getGuildPrefix.get(GUILD_ID);
-  console.log("SQLite tiene:", sqlite);
-  
-  console.log("Modo:", db.mode);
-}, 5000); // Espera 5s después de iniciar
