@@ -17,7 +17,7 @@ async function getTranslator(context) {
     
     // Verificar si la DB está disponible
     if (db.available && context.guild?.id) {
-      lang = await db.pg.getGuildLang(context.guild.id);
+      lang = await db.getGuildLang(context.guild.id);
     } else {
       // DB no disponible, usar detección automática
       lang = detectLanguage(context);

@@ -14,18 +14,18 @@ const logger = createLogger("purge");
 
 // Configuración de límites reales de Discord
 const DISCORD_LIMITS = {
-  MAX_BULK_DELETE: 100,          // Discord permite máximo 100 por bulkDelete
-  BULK_DELETE_AGE_DAYS: 14,      // Solo mensajes < 14 días
-  FETCH_LIMIT: 100,              // Límite de fetch por request
-  RATE_LIMIT_DELAY: 1000         // Delay entre operaciones para evitar rate limit
+  MAX_BULK_DELETE: 100,
+  BULK_DELETE_AGE_DAYS: 14,
+  FETCH_LIMIT: 100,
+  RATE_LIMIT_DELAY: 1000
 };
 
 const ALLOWED_CHANNEL_TYPES = [
   ChannelType.GuildText,
-  ChannelType.GuildVoice,         // Chat de voz
+  ChannelType.GuildVoice,
   ChannelType.PublicThread,
   ChannelType.PrivateThread,
-  ChannelType.GuildForum          // Posts en foros
+  ChannelType.GuildForum
 ];
 
 export const data = new SlashCommandBuilder()
@@ -69,10 +69,6 @@ export const data = new SlashCommandBuilder()
       .setMaxValue(1000)
   );
 
-/**
- * Fetch messages with pagination
- * Limita automáticamente para evitar timeouts
- */
 async function fetchMessages(channel, totalLimit) {
   const messages = [];
   let lastId;
@@ -100,7 +96,6 @@ async function fetchMessages(channel, totalLimit) {
       
       logger.debug(`Batch ${i + 1}: ${batch.size} mensajes (total: ${messages.length})`);
       
-      // Rate limiting entre fetches
       if (i < maxIterations - 1) {
         await sleep(300);
       }
@@ -114,17 +109,12 @@ async function fetchMessages(channel, totalLimit) {
   return messages;
 }
 
-/**
- * Bulk delete con manejo robusto de errores
- * Agrupa todos los mensajes válidos y hace UN solo bulkDelete
- */
 async function bulkDeleteMessages(channel, messages) {
   if (messages.length === 0) return 0;
   
   const now = Date.now();
   const cutoff = now - (DISCORD_LIMITS.BULK_DELETE_AGE_DAYS * 24 * 60 * 60 * 1000);
   
-  // Separar por edad
   const recent = messages.filter(m => m.createdTimestamp > cutoff);
   const old = messages.filter(m => m.createdTimestamp <= cutoff);
   
@@ -132,7 +122,6 @@ async function bulkDeleteMessages(channel, messages) {
   
   let deleted = 0;
   
-  // Bulk delete de mensajes recientes (máximo 100 por operación)
   if (recent.length > 0) {
     const chunks = chunkArray(recent, DISCORD_LIMITS.MAX_BULK_DELETE);
     
@@ -142,20 +131,17 @@ async function bulkDeleteMessages(channel, messages) {
         const result = await channel.bulkDelete(chunk, true);
         deleted += result.size;
         
-        // Rate limit entre chunks
         if (chunks.length > 1) {
           await sleep(DISCORD_LIMITS.RATE_LIMIT_DELAY);
         }
         
       } catch (error) {
-        // Si bulkDelete falla, intentar individual
         logger.warn(`BulkDelete falló, intentando individual`, error);
         deleted += await deleteIndividually(chunk);
       }
     }
   }
   
-  // Mensajes antiguos: borrado individual (no hay otra opción)
   if (old.length > 0) {
     logger.debug(`Borrando ${old.length} mensajes antiguos individualmente`);
     deleted += await deleteIndividually(old);
@@ -164,10 +150,6 @@ async function bulkDeleteMessages(channel, messages) {
   return deleted;
 }
 
-/**
- * Borrar mensajes uno por uno con rate limiting
- * Última opción, lento pero confiable
- */
 async function deleteIndividually(messages) {
   let deleted = 0;
   
@@ -175,12 +157,9 @@ async function deleteIndividually(messages) {
     try {
       await msg.delete();
       deleted++;
-      
-      // Rate limiting agresivo para evitar 429
       await sleep(500);
       
     } catch (error) {
-      // Ignorar errores de mensajes ya borrados o sin permisos
       if (!error.message.includes("Unknown Message")) {
         logger.debug(`No se pudo borrar mensaje ${msg.id}: ${error.message}`);
       }
@@ -190,38 +169,6 @@ async function deleteIndividually(messages) {
   return deleted;
 }
 
-/**
- * Actualizar mensaje de progreso cada N mensajes
- */
-async function updateProgress(interaction, current, total, user) {
-  const percentage = Math.floor((current / total) * 100);
-  const bar = createProgressBar(current, total);
-  
-  try {
-    await interaction.editReply(
-      `🔄 Borrando mensajes de ${user.tag}...\n\n` +
-      `${bar} ${percentage}%\n` +
-      `${current}/${total} procesados`
-    );
-  } catch (error) {
-    // Ignorar errores de edición
-  }
-}
-
-/**
- * Crear barra de progreso visual
- */
-function createProgressBar(current, total, length = 20) {
-  const percentage = current / total;
-  const filled = Math.floor(percentage * length);
-  const empty = length - filled;
-  
-  return `[${"█".repeat(filled)}${"░".repeat(empty)}]`;
-}
-
-/**
- * Dividir array en chunks
- */
 function chunkArray(array, size) {
   const chunks = [];
   for (let i = 0; i < array.length; i += size) {
@@ -230,16 +177,10 @@ function chunkArray(array, size) {
   return chunks;
 }
 
-/**
- * Sleep helper
- */
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-/**
- * Comando principal
- */
 export async function execute(interaction) {
   const lang = await getGuildLang(interaction.guildId);
   
@@ -272,7 +213,7 @@ export async function execute(interaction) {
   const channelPerms = interaction.channel.permissionsFor(botMember);
   if (!channelPerms.has(PermissionFlagsBits.ManageMessages)) {
     return interaction.reply({
-      content: t(lang, "utility.purge.no_channel_permission"),
+      content: t(lang, "purge.responses.no_channel_permission"),
       ephemeral: true
     });
   }
@@ -282,14 +223,13 @@ export async function execute(interaction) {
   
   logger.info(`Purge iniciado: ${user.tag} en ${interaction.channel.name} (limit: ${limit})`);
   
-  // Defer con mensaje de inicio
+  // ✅ CORREGIDO: Ahora usa "purge.responses.start"
   await interaction.reply({
-    content: t(lang, "utility.purge.start"),
+    content: t(lang, "purge.responses.start"),
     ephemeral: true
   });
   
   try {
-    // Fetch mensajes
     const messages = await fetchMessages(interaction.channel, limit);
     const userMessages = messages.filter(m => m.author.id === user.id);
     
@@ -297,17 +237,16 @@ export async function execute(interaction) {
     
     if (userMessages.length === 0) {
       return interaction.editReply(
-        t(lang, "utility.purge.no_messages", { 
+        t(lang, "purge.responses.no_messages", { 
           user: user.tag, 
           limit: limit 
         })
       );
     }
     
-    // Confirmar antes de borrar muchos mensajes
     if (userMessages.length > 50) {
       await interaction.editReply(
-        t(lang, "utility.purge.processing", {
+        t(lang, "purge.responses.processing", {
           count: userMessages.length,
           user: user.tag
         })
@@ -315,36 +254,34 @@ export async function execute(interaction) {
       await sleep(2000);
     }
     
-    // Borrar mensajes
     const startTime = Date.now();
     const deleted = await bulkDeleteMessages(interaction.channel, userMessages);
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     
     logger.info(`Purge completado: ${deleted}/${userMessages.length} borrados en ${elapsed}s`);
     
-    // Resultado final
+    // ✅ CORREGIDO: Rutas correctas
     await interaction.editReply(
-      t(lang, "utility.purge.done") + "\n\n" +
-      t(lang, "utility.purge.stats", {
+      t(lang, "purge.responses.done") + "\n\n" +
+      t(lang, "purge.responses.stats", {
         user: user.tag,
         checked: messages.length,
         deleted: deleted
       }) +
-      `\n⏱️ ${t(lang, "utility.purge.time")}: ${elapsed}s`
+      `\n⏱️ ${t(lang, "purge.responses.time")}: ${elapsed}s`
     );
     
   } catch (error) {
     logger.error("Error en purge", error);
     
-    // Mensajes de error específicos
     let errorMsg = t(lang, "common.errors.unexpected");
     
     if (error.code === 50013) {
-      errorMsg = t(lang, "utility.purge.error_permissions");
+      errorMsg = t(lang, "purge.responses.error_permissions");
     } else if (error.code === 50001) {
-      errorMsg = t(lang, "utility.purge.error_access");
+      errorMsg = t(lang, "purge.responses.error_access");
     } else if (error.message.includes("429")) {
-      errorMsg = t(lang, "utility.purge.error_rate_limit");
+      errorMsg = t(lang, "purge.responses.error_rate_limit");
     }
     
     await interaction.editReply({ content: errorMsg });

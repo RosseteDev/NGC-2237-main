@@ -7,7 +7,7 @@ import LavalinkManager from "./music/LavalinkManager.js";
 import { handlePrefixCommand } from "./handlers/prefixHandler.js";
 import CommandHandler from "./utils/CommandHandler.js";
 import { createLogger } from "./utils/Logger.js";
-import { db } from "./database/manager.js";
+import { db } from "./database/ResilientDatabaseManager.js";
 
 const logger = createLogger("main");
 

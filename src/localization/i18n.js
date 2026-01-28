@@ -1,4 +1,6 @@
 // src/localization/i18n.js
+// ✅ VERSIÓN COMPATIBLE CON SISTEMA ACTUAL
+
 import { readFileSync, readdirSync, existsSync, statSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -9,8 +11,7 @@ const __dirname = dirname(__filename);
 const cache = new Map();
 
 /**
- * Carga recursivamente todos los archivos JSON de un directorio
- * Ahora soporta carpetas anidadas: mod/, utility/musica/, utility/Rule34/
+ * Carga recursivamente todos los archivos JSON
  */
 function loadDirectoryRecursive(dir, result = {}, pathParts = []) {
   if (!existsSync(dir)) return result;
@@ -22,19 +23,14 @@ function loadDirectoryRecursive(dir, result = {}, pathParts = []) {
     const stat = statSync(fullPath);
 
     if (stat.isDirectory()) {
-      // Si es carpeta, cargar recursivamente agregando el nombre a la ruta
       loadDirectoryRecursive(fullPath, result, [...pathParts, item]);
     } else if (item.endsWith('.json')) {
-      // Si es archivo JSON, cargarlo
       try {
         const data = JSON.parse(readFileSync(fullPath, "utf-8"));
         const filename = item.replace('.json', '');
         
-        // Construir la clave completa basada en la ruta
-        // Ejemplo: ["utility", "musica"] + "reproducir.json" = utility.musica.reproducir
         const keyPath = [...pathParts, filename];
         
-        // Navegar/crear la estructura anidada
         let current = result;
         for (let i = 0; i < keyPath.length - 1; i++) {
           const part = keyPath[i];
@@ -44,7 +40,6 @@ function loadDirectoryRecursive(dir, result = {}, pathParts = []) {
           current = current[part];
         }
         
-        // Asignar los datos al último nivel
         const lastKey = keyPath[keyPath.length - 1];
         current[lastKey] = data;
         
@@ -82,12 +77,10 @@ export function loadLang(lang = "en") {
 
 /**
  * Obtiene una traducción por clave con interpolación de variables
- * Ahora soporta rutas profundas: "utility.musica.reproducir.title"
  */
 export function t(lang, key, vars = {}) {
   const dict = loadLang(lang);
   
-  // Separar por puntos: "utility.musica.reproducir.title"
   const parts = key.split(".");
   let text = dict;
 
@@ -96,7 +89,6 @@ export function t(lang, key, vars = {}) {
     if (!text) break;
   }
 
-  // Si no se encontró, devolver la clave
   if (!text || typeof text !== "string") {
     console.warn(`⚠️ Translation missing: ${key} (${lang})`);
     return key;

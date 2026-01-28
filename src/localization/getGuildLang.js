@@ -1,7 +1,7 @@
 // src/localization/getGuildLang.js
-// ✅ VERSIÓN ROBUSTA con fallback automático
+// ✅ ACTUALIZADO para usar ResilientDatabaseManager
 
-import pool from "../database/pool.js";
+import { db } from "../database/ResilientDatabaseManager.js";
 
 // Cache en memoria (30 minutos TTL)
 const langCache = new Map();
@@ -24,7 +24,7 @@ export async function getGuildLang(guildId) {
   // 2. Intentar obtener de DB con timeout agresivo
   try {
     const lang = await Promise.race([
-      queryDatabase(guildId),
+      db.getGuildLang(guildId), // ✅ Ahora usa ResilientDatabaseManager
       new Promise((_, reject) => 
         setTimeout(() => reject(new Error("DB timeout")), 800)
       )
@@ -40,7 +40,7 @@ export async function getGuildLang(guildId) {
     
   } catch (error) {
     // 3. Fallback: retornar idioma por defecto
-    console.warn(`⚠️ getGuildLang fallback: ${error.message} - usando ${DEFAULT_LANG}`);
+    // NO mostrar warning porque el ResilientDatabaseManager ya lo hace
     
     // Cachear default por 30 segundos (evita spam de intentos)
     langCache.set(guildId, {
@@ -53,31 +53,12 @@ export async function getGuildLang(guildId) {
 }
 
 /**
- * Query a la base de datos
- * Aislada para mejor manejo de errores
- */
-async function queryDatabase(guildId) {
-  const result = await pool.query(
-    "SELECT lang FROM guild_settings WHERE guild_id = $1",
-    [guildId]
-  );
-  
-  return result.rows[0]?.lang || DEFAULT_LANG;
-}
-
-/**
  * Actualizar idioma del servidor
  */
 export async function setGuildLang(guildId, lang) {
   try {
     await Promise.race([
-      pool.query(
-        `INSERT INTO guild_settings (guild_id, lang, updated_at)
-         VALUES ($1, $2, NOW())
-         ON CONFLICT (guild_id)
-         DO UPDATE SET lang = EXCLUDED.lang, updated_at = NOW()`,
-        [guildId, lang]
-      ),
+      db.setGuildLang(guildId, lang), // ✅ Ahora usa ResilientDatabaseManager
       new Promise((_, reject) => 
         setTimeout(() => reject(new Error("DB timeout")), 1000)
       )

@@ -3,7 +3,7 @@
 import { EmbedBuilder } from "discord.js";
 import { buildCommand } from "../../utils/commandbuilder.js";
 import { useLang } from "../../localization/useLang.js";
-import { db } from "../../database/manager.js";
+import { db } from "../../database/ResilientDatabaseManager.js";
 
 const DEFAULT_PREFIX = "r!";
 
@@ -13,7 +13,7 @@ export const data = buildCommand("settings", "prefix");
 export async function execute(context) {
   const t = await context.getTranslator();
   let newPrefix = context.options.getString("new_prefix");
-  const currentPrefix = await db.pg.getGuildPrefix(context.guild?.id);
+  const currentPrefix = await db.getGuildPrefix(context.guild?.id);
 
   // Solo ver prefix actual
   if (!newPrefix) {
@@ -77,7 +77,7 @@ export async function execute(context) {
 
   // Guardar nuevo prefix
   try {
-    await db.pg.setGuildPrefix(context.guild.id, newPrefix);
+    await db.setGuildPrefix(context.guild.id, newPrefix);
 
     const embed = new EmbedBuilder()
       .setColor(0x00ff00)

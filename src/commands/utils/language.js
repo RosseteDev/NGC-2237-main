@@ -3,7 +3,7 @@
 import { SlashCommandBuilder } from "discord.js";
 import { useLang } from "../../localization/useLang.js";
 import { createLogger } from "../../utils/Logger.js";
-import { db } from "../../database/manager.js";
+import { db } from "../../database/ResilientDatabaseManager.js";
 
 const logger = createLogger("settings:language");
 
@@ -43,7 +43,7 @@ export async function execute(context) {
   logger.debug(`Usuario: ${context.user.tag}`);
   logger.debug(`Servidor: ${context.guild.name}`);
 
-  await db.pg.setGuildLang(context.guild.id, lang);
+  await db.setGuildLang(context.guild.id, lang);
   
   logger.info(`Idioma cambiado a ${lang} en ${context.guild.name}`);
 

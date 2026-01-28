@@ -123,7 +123,7 @@ async function getPrefix(guildId) {
   // ✅ 3. Intentar obtener de DB solo si está disponible y no en cache
   try {
     const prefix = await Promise.race([
-      db.pg.getGuildPrefix(guildId),
+      db.getGuildPrefix(guildId),
       new Promise((_, reject) => 
         setTimeout(() => reject(new Error("Timeout")), 800)
       )

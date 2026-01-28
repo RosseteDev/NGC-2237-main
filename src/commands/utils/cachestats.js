@@ -1,7 +1,7 @@
 // commands/cachestats.js - Ver rendimiento del cache
 
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
-import { db } from "../../database/manager.js";
+import { db } from "../../database/ResilientDatabaseManager.js";
 
 export const data = new SlashCommandBuilder()
   .setName("cachestats")

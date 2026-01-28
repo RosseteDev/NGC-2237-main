@@ -22,7 +22,7 @@ export async function detectLanguage(context) {
       try {
         // Timeout de 500ms para evitar bloqueos
         const lang = await Promise.race([
-          db.pg.getGuildLang(context.guild.id),
+          db.getGuildLang(context.guild.id),
           new Promise((_, reject) => 
             setTimeout(() => reject(new Error("Timeout")), 500)
           )

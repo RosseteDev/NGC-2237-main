@@ -1,4 +1,5 @@
-// localization/useLang.js - OPTIMIZADO PARA PRODUCCIÓN
+// src/localization/useLang.js
+// ✅ VERSIÓN COMPATIBLE CON SISTEMA ACTUAL
 
 import { readFileSync, readdirSync, existsSync, statSync } from "fs";
 import { join, dirname } from "path";
@@ -9,12 +10,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Cache de traducciones por idioma
 const translations = {};
 
-// Cache de rutas de búsqueda para evitar re-calcular
+// Cache de rutas de búsqueda
 const searchCache = new Map();
 
 /**
- * Carga recursivamente con estructura jerárquica
- * Mantiene organización por carpetas para mejor gestión de memoria
+ * Carga recursivamente archivos JSON
  */
 function loadDirectoryRecursive(dir, lang, pathParts = []) {
   if (!existsSync(dir)) return;
@@ -32,21 +32,14 @@ function loadDirectoryRecursive(dir, lang, pathParts = []) {
         const data = JSON.parse(readFileSync(fullPath, "utf-8"));
         const filename = item.replace('.json', '');
         
-        // Detectar si usar solo carpeta o agregar nombre de archivo
-        const shouldUseFolder = pathParts.length > 0 && pathParts[pathParts.length - 1] === filename;
-        
         let current = translations[lang];
         for (const part of pathParts) {
           if (!current[part]) current[part] = {};
           current = current[part];
         }
         
-        if (shouldUseFolder) {
-          Object.assign(current, data);
-        } else {
-          if (!current[filename]) current[filename] = {};
-          Object.assign(current[filename], data);
-        }
+        if (!current[filename]) current[filename] = {};
+        Object.assign(current[filename], data);
         
       } catch (error) {
         console.warn(`⚠️ Error cargando ${fullPath}:`, error.message);
@@ -56,14 +49,11 @@ function loadDirectoryRecursive(dir, lang, pathParts = []) {
 }
 
 /**
- * Busca una traducción con fallback inteligente
- * 1. Busca con estructura completa (utility.music.embed.title)
- * 2. Si falla, busca sin prefijo (music.embed.title)
- * 3. Cache de rutas exitosas para próximas búsquedas
+ * Busca traducción con fallback inteligente
  */
 function findTranslation(obj, key, lang) {
-  // Verificar cache primero
   const cacheKey = `${lang}:${key}`;
+  
   if (searchCache.has(cacheKey)) {
     const cachedPath = searchCache.get(cacheKey);
     let value = obj;
@@ -72,13 +62,12 @@ function findTranslation(obj, key, lang) {
       if (!value) break;
     }
     if (value) return value;
-    // Cache invalidado, eliminar
     searchCache.delete(cacheKey);
   }
 
   const parts = key.split(".");
   
-  // Estrategia 1: Búsqueda directa con path completo
+  // Búsqueda directa
   let value = obj;
   for (const part of parts) {
     value = value?.[part];
@@ -90,49 +79,11 @@ function findTranslation(obj, key, lang) {
     return value;
   }
 
-  // Estrategia 2: Búsqueda recursiva en todas las ramas
-  // Útil cuando la clave no incluye el prefijo correcto
-  const found = deepSearch(obj, parts);
-  
-  if (found) {
-    searchCache.set(cacheKey, found.path);
-    return found.value;
-  }
-
   return null;
 }
 
 /**
- * Búsqueda profunda recursiva en el árbol de traducciones
- * Solo se ejecuta en cache miss para mantener performance
- */
-function deepSearch(obj, targetParts, currentPath = []) {
-  // Si llegamos al final del path, verificar si es string
-  if (targetParts.length === 0) {
-    return typeof obj === 'string' ? { value: obj, path: currentPath } : null;
-  }
-
-  const [first, ...rest] = targetParts;
-
-  // Intentar búsqueda directa
-  if (obj[first]) {
-    const result = deepSearch(obj[first], rest, [...currentPath, first]);
-    if (result) return result;
-  }
-
-  // Búsqueda recursiva en sub-objetos
-  for (const key in obj) {
-    if (typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
-      const result = deepSearch(obj[key], targetParts, [...currentPath, key]);
-      if (result) return result;
-    }
-  }
-
-  return null;
-}
-
-/**
- * Cargar traducciones por idioma con lazy loading
+ * Cargar traducciones por idioma
  */
 function loadTranslations(lang) {
   if (!translations[lang]) {
@@ -154,7 +105,7 @@ function loadTranslations(lang) {
 }
 
 /**
- * Hook principal optimizado
+ * Hook principal
  */
 export async function useLang(interaction) {
   const lang = interaction.locale?.startsWith("es") ? "es" : "en";
@@ -168,7 +119,7 @@ export async function useLang(interaction) {
       return key;
     }
 
-    // Interpolación optimizada
+    // Interpolación
     return Object.entries(params).reduce(
       (str, [k, v]) => str.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v)),
       value
@@ -177,7 +128,7 @@ export async function useLang(interaction) {
 }
 
 /**
- * Función de traducción directa (para commandBuilder)
+ * Función de traducción directa
  */
 export function getTranslation(lang, key) {
   const t = loadTranslations(lang);
@@ -185,7 +136,7 @@ export function getTranslation(lang, key) {
 }
 
 /**
- * Limpiar cache (útil en hot-reload development)
+ * Limpiar cache
  */
 export function clearCache() {
   searchCache.clear();
