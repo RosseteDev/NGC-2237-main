@@ -2,12 +2,10 @@
 
 import { EmbedBuilder } from "discord.js";
 import { buildCommand } from "../../utils/commandbuilder.js";
-import { useLang } from "../../localization/useLang.js";
 import { db } from "../../database/ResilientDatabaseManager.js";
 
 const DEFAULT_PREFIX = "r!";
 
-// ✅ SINTAXIS CORRECTA: buildCommand(category, commandName)
 export const data = buildCommand("settings", "prefix");
 
 export async function execute(context) {
@@ -31,7 +29,9 @@ export async function execute(context) {
         name: "💡 Cambiar prefix",
         value: `Usa: \`${currentPrefix}prefix <nuevo_prefix>\``
       })
-      .setFooter({ text: `Para restaurar: ${currentPrefix}prefix ${DEFAULT_PREFIX.replace('!', '')}` })
+      .setFooter({ 
+        text: `Para restaurar: ${currentPrefix}prefix ${DEFAULT_PREFIX.replace('!', '')}` 
+      })
       .setTimestamp();
 
     return context.reply({ embeds: [embed] });
@@ -78,6 +78,15 @@ export async function execute(context) {
   // Guardar nuevo prefix
   try {
     await db.setGuildPrefix(context.guild.id, newPrefix);
+    
+    // ✅ CRÍTICO: Invalidar cache del prefix handler
+    try {
+      const { invalidatePrefixCache } = await import("../../handlers/prefixHandler.js");
+      invalidatePrefixCache(context.guild.id);
+    } catch (error) {
+      // Si no existe el handler, no importa
+      console.debug("No se pudo invalidar cache (handler no encontrado)");
+    }
 
     const embed = new EmbedBuilder()
       .setColor(0x00ff00)
@@ -96,6 +105,7 @@ export async function execute(context) {
       .setTimestamp();
 
     await context.reply({ embeds: [embed] });
+    
   } catch (error) {
     console.error("Error guardando prefix:", error);
     return context.reply({
