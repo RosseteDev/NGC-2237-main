@@ -1,6 +1,8 @@
 {
-  "name": "debug",
-  "description": "Control debug mode (Admin Only)",
+  "command": {
+    "name": "debug",
+    "description": "Control debug mode (Admin Only)"
+  },
   "subcommands": {
     "enable": {
       "description": "Enable debug mode",
@@ -34,5 +36,24 @@
         }
       }
     }
+  },
+  "metadata": {
+    "guildOnly": true,
+    "permissions": {
+      "user": ["Administrator"]
+    }
+  },
+  "responses": {
+    "enabled_title": "✅ Debug Enabled",
+    "enabled_description": "**Modules:** {modules}\n\n⚠️ This only affects this bot instance.\nLogs will be more detailed.",
+    "disabled_title": "❌ Debug Disabled",
+    "disabled_description": "Debug messages will no longer be shown.",
+    "status_title": "🔍 Logger Status",
+    "status_description": "**Status:** {status}\n**Modules:** {modules}\n**Log Level:** {level}\n**Timestamp:** {timestamp}\n**Colors:** {colors}",
+    "level_title": "📊 Level Updated",
+    "level_description": "Log level changed to: **{level}**",
+    "yes": "Yes",
+    "no": "No",
+    "none": "None"
   }
 }

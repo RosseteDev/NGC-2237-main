@@ -5,7 +5,10 @@
   },
   "options": {
     "query": {
-      "description": "Nombre de la canción o URL"
+      "type": "string",
+      "description": "Nombre de la canción o URL",
+      "required": true,
+      "autocomplete": true
     }
   },
   "responses": {

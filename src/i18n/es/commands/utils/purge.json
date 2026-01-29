@@ -3,10 +3,16 @@
   "description": "Borra mensajes de un usuario",
   "options": {
     "user": {
-      "description": "Usuario objetivo"
+      "type": "user",
+      "description": "Usuario objetivo",
+      "required": true
     },
     "limit": {
-      "description": "Mensajes a escanear (1-1000)"
+      "type": "integer",
+      "description": "Mensajes a escanear (1-1000)",
+      "required": false,
+      "min": 1,
+      "max": 1000
     }
   },
   "responses": {

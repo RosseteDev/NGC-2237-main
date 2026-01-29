@@ -1,31 +1,31 @@
 {
   "command": {
-    "name": "debug",
-    "description": "Control debug mode (Admin Only)"
+    "name": "depuracion",
+    "description": "Controlar modo de depuración (Solo Admin)"
   },
   "subcommands": {
     "enable": {
-      "description": "Enable debug mode",
+      "description": "Activar modo de depuración",
       "options": {
         "modules": {
           "type": "string",
-          "description": "Modules to debug (comma-separated, * for all)",
+          "description": "Módulos a depurar (separados por comas, * para todos)",
           "required": false
         }
       }
     },
     "disable": {
-      "description": "Disable debug mode"
+      "description": "Desactivar modo de depuración"
     },
     "status": {
-      "description": "Show debug status"
+      "description": "Mostrar estado de depuración"
     },
     "level": {
-      "description": "Change log level",
+      "description": "Cambiar nivel de registro",
       "options": {
         "level": {
           "type": "string",
-          "description": "Log level",
+          "description": "Nivel de registro",
           "required": true,
           "choices": [
             { "name": "Error", "value": "error" },
@@ -35,12 +35,6 @@
           ]
         }
       }
-    }
-  },
-  "metadata": {
-    "guildOnly": true,
-    "permissions": {
-      "user": ["Administrator"]
     }
   },
   "responses": {

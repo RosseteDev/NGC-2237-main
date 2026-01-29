@@ -1,11 +1,17 @@
 {
-  "name": "depuracion",
-  "description": "Controlar modo de depuración (Solo Admin)",
-  "options": {
+  "command": {
+    "name": "depuracion",
+    "description": "Controlar modo de depuración (Solo Admin)"
+  },
+  "subcommands": {
     "enable": {
       "description": "Activar modo de depuración",
-      "modules": {
-        "description": "Módulos a depurar (separados por comas, * para todos)"
+      "options": {
+        "modules": {
+          "type": "string",
+          "description": "Módulos a depurar (separados por comas, * para todos)",
+          "required": false
+        }
       }
     },
     "disable": {
@@ -16,9 +22,25 @@
     },
     "level": {
       "description": "Cambiar nivel de registro",
-      "level_option": {
-        "description": "Nivel de registro"
+      "options": {
+        "level": {
+          "type": "string",
+          "description": "Nivel de registro",
+          "required": true,
+          "choices": [
+            { "name": "Error", "value": "error" },
+            { "name": "Warn", "value": "warn" },
+            { "name": "Info", "value": "info" },
+            { "name": "Debug", "value": "debug" }
+          ]
+        }
       }
+    }
+  },
+  "metadata": {
+    "guildOnly": true,
+    "permissions": {
+      "user": ["Administrator"]
     }
   },
   "responses": {

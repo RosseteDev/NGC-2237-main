@@ -1,0 +1,33 @@
+{
+  "command": {
+    "name": "prefijo",
+    "description": "Ver o cambiar el prefijo de comandos del servidor"
+  },
+  "options": {
+    "new_prefix": {
+      "type": "string",
+      "description": "El nuevo prefijo para comandos de texto",
+      "required": false
+    }
+  },
+  "metadata": {
+    "guildOnly": true,
+    "permissions": {
+      "user": ["Administrator"]
+    }
+  },
+  "responses": {
+    "current_prefix_title": "📝 Prefijo Actual",
+    "current_prefix_description": "**Actual:** {currentPrefix}\n**Por defecto:** {defaultPrefix}",
+    "how_to_change": "¿Cómo cambiar el prefijo?",
+    "how_to_change_value": "Usa `/prefix <nuevo_prefijo>` para cambiarlo",
+    "restore_footer": "Para restaurar: /prefix {defaultPrefix}",
+    "no_permission": "❌ Necesitas ser administrador para cambiar el prefijo",
+    "prefix_too_long": "❌ El prefijo no puede ser más largo que 10 caracteres",
+    "prefix_has_spaces": "❌ El prefijo no puede contener espacios",
+    "prefix_starts_with_slash": "❌ El prefijo no puede empezar con /",
+    "prefix_updated_title": "✅ Prefijo Actualizado",
+    "prefix_updated_description": "Cambiado de **{oldPrefix}** a **{newPrefix}**",
+    "error_saving": "❌ Error al guardar el nuevo prefijo"
+  }
+}

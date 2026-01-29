@@ -1,0 +1,33 @@
+{
+  "command": {
+    "name": "prefix",
+    "description": "View or change the server's command prefix"
+  },
+  "options": {
+    "new_prefix": {
+      "type": "string",
+      "description": "The new prefix for text commands",
+      "required": false
+    }
+  },
+  "metadata": {
+    "guildOnly": true,
+    "permissions": {
+      "user": ["Administrator"]
+    }
+  },
+  "responses": {
+    "current_prefix_title": "📝 Current Prefix",
+    "current_prefix_description": "**Current:** {currentPrefix}\n**Default:** {defaultPrefix}",
+    "how_to_change": "How to change the prefix?",
+    "how_to_change_value": "Use `/prefix <new_prefix>` to change it",
+    "restore_footer": "To restore: /prefix {defaultPrefix}",
+    "no_permission": "❌ You need to be an administrator to change the prefix",
+    "prefix_too_long": "❌ The prefix cannot be longer than 10 characters",
+    "prefix_has_spaces": "❌ The prefix cannot contain spaces",
+    "prefix_starts_with_slash": "❌ The prefix cannot start with /",
+    "prefix_updated_title": "✅ Prefix Updated",
+    "prefix_updated_description": "Changed from **{oldPrefix}** to **{newPrefix}**",
+    "error_saving": "❌ Error saving the new prefix"
+  }
+}

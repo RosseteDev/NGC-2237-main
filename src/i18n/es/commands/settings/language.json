@@ -1,0 +1,29 @@
+{
+  "command": {
+    "name": "idioma",
+    "description": "Cambiar el idioma del servidor"
+  },
+  "options": {
+    "lang": {
+      "type": "string",
+      "description": "Selecciona el idioma para el servidor",
+      "required": true,
+      "choices": [
+        { "name": "English 🇺🇸", "value": "en" },
+        { "name": "Español 🇪🇸", "value": "es" }
+      ]
+    }
+  },
+  "metadata": {
+    "guildOnly": true,
+    "permissions": {
+      "user": ["Administrator"]
+    }
+  },
+  "responses": {
+    "updated_title": "✅ Idioma Actualizado",
+    "updated_description": "Idioma del servidor cambiado a: **{lang}**",
+    "error_title": "❌ Error",
+    "error_description": "No se pudo cambiar el idioma del servidor"
+  }
+}

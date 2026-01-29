@@ -176,6 +176,7 @@ export function buildCommand(category, commandName) {
 
   const esConfig = loadCommandConfig(category, commandName, "es");
 
+  // ✅ CORRECCIÓN: Acceder correctamente a la estructura
   const enCommand = enConfig.command || enConfig;
   const esCommand = esConfig?.command || esConfig;
 
@@ -192,7 +193,11 @@ export function buildCommand(category, commandName) {
   }
 
   // 🚨 MUTUAMENTE EXCLUYENTES
-  if (enConfig.options && enConfig.subcommands) {
+  // ✅ FIX: Buscar options en el nivel correcto
+  const rootOptions = enConfig.options;
+  const rootSubcommands = enConfig.subcommands;
+
+  if (rootOptions && rootSubcommands) {
     throw new Error(
       `❌ El comando "${commandName}" no puede tener ` +
       `"options" y "subcommands" al mismo tiempo`
@@ -200,13 +205,13 @@ export function buildCommand(category, commandName) {
   }
 
   // 🟢 SUBCOMMANDS
-  if (enConfig.subcommands) {
+  if (rootSubcommands) {
     addSubcommands(command, category, enConfig, esConfig);
   }
 
   // 🟢 OPCIONES SIMPLES
-  else if (enConfig.options) {
-    for (const [optName, optConfig] of Object.entries(enConfig.options)) {
+  else if (rootOptions) {
+    for (const [optName, optConfig] of Object.entries(rootOptions)) {
       if (!optConfig.type) {
         throw new Error(
           `❌ La opción "${optName}" en ${commandName} no tiene "type"`
@@ -216,26 +221,6 @@ export function buildCommand(category, commandName) {
       addOption(command, optName, optConfig, esConfig?.options?.[optName]);
     }
   }
-
-  // Permisos
-  if (enConfig.metadata?.permissions?.user?.length > 0) {
-    const perm = PermissionMap[enConfig.metadata.permissions.user[0]];
-    if (perm) {
-      command.setDefaultMemberPermissions(Number(perm));
-    }
-  }
-
-  command.setDMPermission(enConfig.metadata?.guildOnly === false);
-
-  // Metadata extendida
-  command.category = category;
-  command.aliases = mergeAliases(enConfig.aliases, esConfig?.aliases);
-  command.cooldown = enConfig.metadata?.cooldown || 3;
-  command.metadata = buildMetadata(enConfig.metadata);
-  command.responses = {
-    en: enConfig.responses || {},
-    es: esConfig?.responses || {}
-  };
 
   return command;
 }
@@ -248,6 +233,8 @@ function addSubcommands(command, category, enConfig, esConfig) {
         `❌ Subcommand "${subName}" en ${category} no tiene description`
       );
     }
+
+    const esSub = esConfig?.subcommands?.[subName];
 
     command.addSubcommand(sub => {
       sub
