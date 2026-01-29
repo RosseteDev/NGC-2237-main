@@ -169,53 +169,65 @@ const PermissionMap = {
  * Construir comando desde configuración JSON
  */
 export function buildCommand(category, commandName) {
-  // Cargar configuración en inglés (base)
   const enConfig = loadCommandConfig(category, commandName, "en");
   if (!enConfig) {
     throw new Error(`No se pudo cargar: ${category}/${commandName}`);
   }
-  
-  // Cargar traducciones
+
   const esConfig = loadCommandConfig(category, commandName, "es");
-  
-  // Crear comando
+
+  const enCommand = enConfig.command || enConfig;
+  const esCommand = esConfig?.command || esConfig;
+
   const command = new SlashCommandBuilder()
-    .setName(enConfig.name)
-    .setDescription(enConfig.description);
-  
-  // Localizaciones
-  if (esConfig) {
-    command.setNameLocalizations({
-      "es-ES": esConfig.name,
-      "es-419": esConfig.name
-    });
-    
+    .setName(commandName)
+    .setDescription(enCommand.description);
+
+  // Localización descripción root
+  if (esCommand?.description) {
     command.setDescriptionLocalizations({
-      "es-ES": esConfig.description,
-      "es-419": esConfig.description
+      "es-ES": esCommand.description,
+      "es-419": esCommand.description
     });
   }
-  
-  // Opciones
-  if (enConfig.options) {
+
+  // 🚨 MUTUAMENTE EXCLUYENTES
+  if (enConfig.options && enConfig.subcommands) {
+    throw new Error(
+      `❌ El comando "${commandName}" no puede tener ` +
+      `"options" y "subcommands" al mismo tiempo`
+    );
+  }
+
+  // 🟢 SUBCOMMANDS
+  if (enConfig.subcommands) {
+    addSubcommands(command, category, enConfig, esConfig);
+  }
+
+  // 🟢 OPCIONES SIMPLES
+  else if (enConfig.options) {
     for (const [optName, optConfig] of Object.entries(enConfig.options)) {
+      if (!optConfig.type) {
+        throw new Error(
+          `❌ La opción "${optName}" en ${commandName} no tiene "type"`
+        );
+      }
+
       addOption(command, optName, optConfig, esConfig?.options?.[optName]);
     }
   }
-  
+
   // Permisos
   if (enConfig.metadata?.permissions?.user?.length > 0) {
-    const firstPerm = enConfig.metadata.permissions.user[0];
-    const permFlag = PermissionMap[firstPerm];
-    if (permFlag) {
-      // Convertir BigInt a Number para evitar error de serialización
-      command.setDefaultMemberPermissions(Number(permFlag));
+    const perm = PermissionMap[enConfig.metadata.permissions.user[0]];
+    if (perm) {
+      command.setDefaultMemberPermissions(Number(perm));
     }
   }
-  
+
   command.setDMPermission(enConfig.metadata?.guildOnly === false);
-  
-  // Metadata
+
+  // Metadata extendida
   command.category = category;
   command.aliases = mergeAliases(enConfig.aliases, esConfig?.aliases);
   command.cooldown = enConfig.metadata?.cooldown || 3;
@@ -224,8 +236,43 @@ export function buildCommand(category, commandName) {
     en: enConfig.responses || {},
     es: esConfig?.responses || {}
   };
-  
+
   return command;
+}
+
+function addSubcommands(command, category, enConfig, esConfig) {
+  for (const [subName, subConfig] of Object.entries(enConfig.subcommands)) {
+
+    if (!subConfig.description) {
+      throw new Error(
+        `❌ Subcommand "${subName}" en ${category} no tiene description`
+      );
+    }
+
+    command.addSubcommand(sub => {
+      sub
+        .setName(subName)
+        .setDescription(subConfig.description);
+
+
+      // Localización descripción subcommand
+      if (esSub?.description) {
+        sub.setDescriptionLocalizations({
+          "es-ES": esSub.description,
+          "es-419": esSub.description
+        });
+      }
+
+      // Opciones del subcommand
+      if (subConfig.options) {
+        for (const [optName, optConfig] of Object.entries(subConfig.options)) {
+          addOption(sub, optName, optConfig, esSub?.options?.[optName]);
+        }
+      }
+
+      return sub;
+    });
+  }
 }
 
 /**

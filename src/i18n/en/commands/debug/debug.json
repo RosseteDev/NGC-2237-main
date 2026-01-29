@@ -1,0 +1,38 @@
+{
+  "name": "debug",
+  "description": "Control debug mode (Admin Only)",
+  "subcommands": {
+    "enable": {
+      "description": "Enable debug mode",
+      "options": {
+        "modules": {
+          "type": "string",
+          "description": "Modules to debug (comma-separated, * for all)",
+          "required": false
+        }
+      }
+    },
+    "disable": {
+      "description": "Disable debug mode"
+    },
+    "status": {
+      "description": "Show debug status"
+    },
+    "level": {
+      "description": "Change log level",
+      "options": {
+        "level": {
+          "type": "string",
+          "description": "Log level",
+          "required": true,
+          "choices": [
+            { "name": "Error", "value": "error" },
+            { "name": "Warn", "value": "warn" },
+            { "name": "Info", "value": "info" },
+            { "name": "Debug", "value": "debug" }
+          ]
+        }
+      }
+    }
+  }
+}

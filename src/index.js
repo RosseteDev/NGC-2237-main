@@ -88,3 +88,5 @@ process.on("uncaughtException", (error) => {
 
 logger.info("🚀 Iniciando bot...");
 client.login(process.env.DISCORD_TOKEN);
+
+// cambio

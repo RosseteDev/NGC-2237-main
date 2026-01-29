@@ -1,93 +1,92 @@
-// src/commands/nsfw/imagen.js
-
 import { 
+  SlashCommandBuilder, 
+  EmbedBuilder, 
   ActionRowBuilder, 
   ButtonBuilder, 
   ButtonStyle,
   ComponentType,
   AttachmentBuilder
 } from "discord.js";
-import { buildCommand } from "../../utils/commandbuilder.js";
-import { createTranslator } from "../../utils/TranslatorHelper.js";
-import { createLogger } from "../../utils/Logger.js";
+import { useLang } from "../../localization/useLang.js";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const logger = createLogger("nsfw:imagen");
-
-// ============================================
-// CONFIGURACIÓN
-// ============================================
-
 const CACHE_FOLDER = path.join(__dirname, "..", "..", "image_cache");
 const TAGS_FILE = path.join(CACHE_FOLDER, "tags.json");
 
+// ✅ Configuración de cache
 const CACHE_CONFIG = {
   MIN_IMAGES: 20,
   FETCH_LIMIT: 100,
   MAX_CACHE: 500
 };
 
-const INTERACTION_TIMEOUT = 900_000; // 15 minutos
-
-// ============================================
-// UTILIDADES DE ARCHIVO
-// ============================================
-
+// Descargar imagen como buffer
 async function downloadImage(url) {
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
-  });
-  
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  
-  return Buffer.from(await response.arrayBuffer());
+    
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch (error) {
+    console.error(`Error descargando imagen: ${error.message}`);
+    throw error;
+  }
 }
 
+// Obtener extensión de archivo desde URL
 function getFileExtension(url) {
   const match = url.match(/\.(jpg|jpeg|png|gif|webp)(\?|$)/i);
   return match ? match[1].toLowerCase() : 'jpg';
 }
 
+// Asegurarse de que la carpeta de caché existe
 async function ensureCacheFolder() {
-  await fs.mkdir(CACHE_FOLDER, { recursive: true }).catch(() => {});
+  try {
+    await fs.mkdir(CACHE_FOLDER, { recursive: true });
+  } catch (error) {
+    console.error("Error creando carpeta de caché:", error);
+  }
 }
 
-// ============================================
-// CACHE DE TAGS
-// ============================================
-
+// Cargar etiquetas guardadas
 async function loadTags() {
   try {
-    return JSON.parse(await fs.readFile(TAGS_FILE, "utf-8"));
+    const data = await fs.readFile(TAGS_FILE, "utf-8");
+    return JSON.parse(data);
   } catch {
     return [];
   }
 }
 
+// Guardar etiquetas
 async function saveTags(tags) {
   try {
     await fs.writeFile(TAGS_FILE, JSON.stringify(tags, null, 2));
   } catch (error) {
-    logger.error("Error guardando tags:", error);
+    console.error("Error guardando tags:", error);
   }
 }
 
-// ============================================
-// CACHE DE IMÁGENES
-// ============================================
-
+// Cargar caché de imágenes para una tag combinada
 async function loadCache(combinedTag) {
   try {
     const cacheFile = path.join(CACHE_FOLDER, `${combinedTag}.json`);
-    const parsed = JSON.parse(await fs.readFile(cacheFile, "utf-8"));
+    const data = await fs.readFile(cacheFile, "utf-8");
+    const parsed = JSON.parse(data);
     
     if (!Array.isArray(parsed)) {
-      logger.warn(`Cache corrupto: ${combinedTag}`);
+      console.warn(`Cache corrupto para ${combinedTag}, reiniciando`);
       return [];
     }
     
@@ -97,299 +96,451 @@ async function loadCache(combinedTag) {
   }
 }
 
+// Guardar caché de imágenes
 async function saveCache(combinedTag, images) {
   try {
     const cacheFile = path.join(CACHE_FOLDER, `${combinedTag}.json`);
-    const limited = images.slice(-CACHE_CONFIG.MAX_CACHE);
-    await fs.writeFile(cacheFile, JSON.stringify(limited, null, 2));
-    logger.debug(`💾 Cache guardado: ${combinedTag} (${limited.length} imgs)`);
+    const limitedImages = images.slice(-CACHE_CONFIG.MAX_CACHE);
+    await fs.writeFile(cacheFile, JSON.stringify(limitedImages, null, 2));
+    console.log(`💾 Cache guardado: ${combinedTag} (${limitedImages.length} imágenes)`);
   } catch (error) {
-    logger.error("Error guardando caché:", error);
+    console.error("Error guardando caché:", error);
   }
 }
 
-// ============================================
-// API DE RULE34
-// ============================================
-
+// Buscar imágenes en Rule34 API con offset
 async function searchRule34(tags, userId, apiKey, page = 0) {
   const tagsQuery = tags.join("+");
   const pid = page * CACHE_CONFIG.FETCH_LIMIT;
   const url = `https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags=${tagsQuery}&limit=${CACHE_CONFIG.FETCH_LIMIT}&pid=${pid}&json=1&user_id=${userId}&api_key=${apiKey}`;
 
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  try {
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
-  const data = await response.json();
-  
-  if (!Array.isArray(data)) return [];
-  
-  return data
-    .filter(post => 
-      post.file_url && 
-      /\.(jpg|jpeg|png|gif)$/i.test(post.file_url)
-    )
-    .map(post => ({
-      url: post.file_url,
-      id: post.id,
-      score: post.score || 0,
-      width: post.width,
-      height: post.height
-    }));
+    const data = await response.json();
+    
+    if (Array.isArray(data)) {
+      return data
+        .filter(post => 
+          post.file_url && 
+          (post.file_url.endsWith('.jpg') || 
+           post.file_url.endsWith('.jpeg') || 
+           post.file_url.endsWith('.png') || 
+           post.file_url.endsWith('.gif'))
+        )
+        .map(post => ({
+          url: post.file_url, // URL de calidad original
+          id: post.id,
+          score: post.score || 0,
+          width: post.width,
+          height: post.height
+        }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.error("Error buscando en Rule34:", error);
+    throw error;
+  }
 }
 
+// Sistema inteligente de gestión de cache
 async function getImages(tags, userId, apiKey) {
   const combinedTag = tags.join("_");
-  let cached = await loadCache(combinedTag);
+  let cachedImages = await loadCache(combinedTag);
   
-  logger.debug(`📦 Cache: ${cached.length} imágenes para "${combinedTag}"`);
+  console.log(`📦 Cache actual: ${cachedImages.length} imágenes para "${combinedTag}"`);
   
-  if (cached.length >= CACHE_CONFIG.MIN_IMAGES) {
-    return { images: cached, fromCache: true, newCount: 0 };
+  if (cachedImages.length >= CACHE_CONFIG.MIN_IMAGES) {
+    console.log(`✅ Usando ${cachedImages.length} imágenes del cache`);
+    return {
+      images: cachedImages,
+      fromCache: true,
+      newCount: 0
+    };
   }
   
-  logger.debug(`🔍 Cache insuficiente, buscando nuevas...`);
+  console.log(`🔍 Cache insuficiente (${cachedImages.length}/${CACHE_CONFIG.MIN_IMAGES}), buscando nuevas...`);
   
-  const page = Math.floor(cached.length / CACHE_CONFIG.FETCH_LIMIT);
-  const results = await searchRule34(tags, userId, apiKey, page);
-  
-  if (results.length === 0) {
-    logger.warn(`⚠️ No se encontraron más imágenes (página ${page})`);
-    return { images: cached, fromCache: true, newCount: 0, exhausted: true };
+  try {
+    const page = Math.floor(cachedImages.length / CACHE_CONFIG.FETCH_LIMIT);
+    const results = await searchRule34(tags, userId, apiKey, page);
+    
+    if (results.length === 0) {
+      console.log(`⚠️ No se encontraron más imágenes en la página ${page}`);
+      return {
+        images: cachedImages,
+        fromCache: true,
+        newCount: 0,
+        exhausted: true
+      };
+    }
+    
+    const existingUrls = new Set(cachedImages.map(img => img.url));
+    const newImages = results.filter(img => !existingUrls.has(img.url));
+    
+    console.log(`✨ Encontradas ${newImages.length} imágenes nuevas`);
+    
+    const updatedCache = [...cachedImages, ...newImages];
+    await saveCache(combinedTag, updatedCache);
+    
+    return {
+      images: updatedCache,
+      fromCache: false,
+      newCount: newImages.length
+    };
+    
+  } catch (error) {
+    console.error("Error buscando nuevas imágenes:", error);
+    
+    if (cachedImages.length > 0) {
+      console.log(`⚠️ Usando cache por error en API`);
+      return {
+        images: cachedImages,
+        fromCache: true,
+        newCount: 0,
+        error: error.message
+      };
+    }
+    
+    throw error;
   }
-  
-  const existingUrls = new Set(cached.map(img => img.url));
-  const newImages = results.filter(img => !existingUrls.has(img.url));
-  
-  logger.debug(`✨ Nuevas: ${newImages.length} imágenes`);
-  
-  const updated = [...cached, ...newImages];
-  await saveCache(combinedTag, updated);
-  
-  return { images: updated, fromCache: false, newCount: newImages.length };
 }
 
-// ============================================
-// AUTOCOMPLETE
-// ============================================
+// AUTOCOMPLETADO
+async function autocompleteTags(interaction, current) {
+  try {
+    const parts = current.split(',').map(s => s.trim());
+    const lastTag = parts[parts.length - 1];
+    const previousTags = parts.slice(0, -1);
+    
+    if (!lastTag || lastTag.length < 2) {
+      return [];
+    }
+    
+    const suggestions = await fetchSuggestionsWithRetry(lastTag);
+    
+    if (!suggestions || suggestions.length === 0) {
+      return [];
+    }
+    
+    const prefix = previousTags.length > 0 ? previousTags.join(', ') + ', ' : '';
+    
+    return suggestions
+      .slice(0, 25)
+      .map(item => {
+        const tag = typeof item === 'string' ? item : (item.value || item.label);
+        const label = typeof item === 'object' && item.label ? item.label : tag;
+        
+        return {
+          name: label.substring(0, 100),
+          value: (prefix + tag).substring(0, 100)
+        };
+      });
+      
+  } catch (error) {
+    console.error('Error en autocomplete:', error.message);
+    return [];
+  }
+}
+
+async function fetchSuggestionsWithRetry(tag) {
+  try {
+    const url = `https://ac.rule34.xxx/autocomplete.php?q=${encodeURIComponent(tag)}`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json'
+      },
+      signal: AbortSignal.timeout(3000)
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0 && data[0] !== "error") {
+        return data;
+      }
+    }
+  } catch (error) {
+    console.log(`Autocomplete falló: ${error.message}`);
+  }
+  
+  return getPopularTagsSuggestions(tag);
+}
+
+function getPopularTagsSuggestions(input) {
+  const popularTags = [
+    'animated', 'video', '3d', '2d', 'sound', 'loop',
+    'anal', 'oral', 'vaginal', 'pov', 'first_person_view',
+    'big_breasts', 'small_breasts', 'ass', 'pussy', 'penis',
+    'cum', 'creampie', 'facial', 'handjob', 'blowjob',
+    'lesbian', 'yuri', 'yaoi', 'futanari', 'trap',
+    'milf', 'teen', 'young', 'old', 'mature',
+    'furry', 'anthro', 'feral', 'pokemon', 'digimon'
+  ];
+  
+  const lowerInput = input.toLowerCase();
+  return popularTags
+    .filter(tag => tag.includes(lowerInput))
+    .map(tag => ({ value: tag, label: tag }));
+}
+
+// UI HELPERS
+function createNavigationButtons(currentPage, totalPages, disabled = false) {
+  return new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId("first")
+        .setEmoji("⏮️")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(disabled || currentPage === 1),
+      new ButtonBuilder()
+        .setCustomId("prev")
+        .setEmoji("◀️")
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(disabled || currentPage === 1),
+      new ButtonBuilder()
+        .setCustomId("stop")
+        .setEmoji("✖️")
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(disabled),
+      new ButtonBuilder()
+        .setCustomId("next")
+        .setEmoji("▶️")
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(disabled || currentPage === totalPages),
+      new ButtonBuilder()
+        .setCustomId("last")
+        .setEmoji("⏭️")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(disabled || currentPage === totalPages)
+    );
+}
+
+// EXPORTS DEL COMANDO
+export const data = new SlashCommandBuilder()
+  .setName("imagen")
+  .setNameLocalizations({
+    "es-ES": "imagen",
+    "es-419": "imagen"
+  })
+  .setDescription("Search images by tags")
+  .setDescriptionLocalizations({
+    "es-ES": "Busca imágenes por etiquetas",
+    "es-419": "Busca imágenes por etiquetas"
+  })
+  .addStringOption(option =>
+    option
+      .setName("tags")
+      .setNameLocalizations({
+        "es-ES": "etiquetas",
+        "es-419": "etiquetas"
+      })
+      .setDescription("Tags to search (comma separated)")
+      .setDescriptionLocalizations({
+        "es-ES": "Etiquetas para buscar (separadas por comas)",
+        "es-419": "Etiquetas para buscar (separadas por comas)"
+      })
+      .setRequired(true)
+      .setAutocomplete(true)
+  )
+  .setNSFW(true);
 
 export async function autocomplete(interaction) {
-  const focused = interaction.options.getFocused();
-  
-  if (focused.length < 2) {
-    return interaction.respond([
-      { name: "🔥 Busca al menos 2 caracteres", value: "anime" }
-    ]);
+  try {
+    const focusedOption = interaction.options.getFocused(true);
+    
+    if (focusedOption.name === "tags" || focusedOption.name === "etiquetas") {
+      const choices = await autocompleteTags(interaction, focusedOption.value);
+      await interaction.respond(choices);
+    } else {
+      await interaction.respond([]);
+    }
+  } catch (error) {
+    console.error('Error en autocomplete:', error);
+    try {
+      await interaction.respond([]);
+    } catch {}
   }
-  
-  const tags = await loadTags();
-  const matches = tags
-    .filter(tag => tag.toLowerCase().includes(focused.toLowerCase()))
-    .slice(0, 25)
-    .map(tag => ({ name: tag, value: tag }));
-  
-  if (matches.length === 0) {
-    return interaction.respond([
-      { name: `"${focused}" - Escribe y presiona Enter`, value: focused }
-    ]);
-  }
-  
-  await interaction.respond(matches);
 }
 
-// ============================================
-// UI
-// ============================================
+export async function execute(interaction) {
+  const t = await useLang(interaction);
 
-function createNavigationButtons(page, total, disabled = false) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("first")
-      .setEmoji("⏮️")
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(disabled || page === 1),
-    new ButtonBuilder()
-      .setCustomId("prev")
-      .setEmoji("◀️")
-      .setStyle(ButtonStyle.Primary)
-      .setDisabled(disabled || page === 1),
-    new ButtonBuilder()
-      .setCustomId("stop")
-      .setEmoji("✖️")
-      .setStyle(ButtonStyle.Danger)
-      .setDisabled(disabled),
-    new ButtonBuilder()
-      .setCustomId("next")
-      .setEmoji("▶️")
-      .setStyle(ButtonStyle.Primary)
-      .setDisabled(disabled || page === total),
-    new ButtonBuilder()
-      .setCustomId("last")
-      .setEmoji("⏭️")
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(disabled || page === total)
-  );
-}
-
-async function updateMessage(context, currentPage, totalPages, image, tagList, t) {
-  const imageBuffer = await downloadImage(image.url);
-  const ext = getFileExtension(image.url);
-  const attachment = new AttachmentBuilder(imageBuffer, { 
-    name: `image_${image.id}.${ext}` 
-  });
-
-  const embed = context.embeds.info(
-    t("page_title", { current: currentPage, total: totalPages }),
-    t("image_info", {
-      tags: tagList.join(", "),
-      score: image.score,
-      id: image.id,
-      width: image.width,
-      height: image.height
-    })
-  );
-  
-  embed.setImage(`attachment://image_${image.id}.${ext}`);
-  embed.setFooter({ text: t("footer", { count: totalPages }) });
-
-  return { embeds: [embed], files: [attachment] };
-}
-
-// ============================================
-// COMMAND
-// ============================================
-
-export const data = buildCommand("nsfw", "imagen");
-
-export async function execute(context) {
-  const t = await createTranslator(data, context);
-
-  // Validaciones
-  if (!context.guild) {
-    return context.reply({ content: t("guild_only"), ephemeral: true });
+  if (!interaction.guild) {
+    return interaction.reply({
+      content: t("common.errors.guild_only"),
+      ephemeral: true
+    });
   }
 
-  if (!context.channel.nsfw) {
-    return context.reply({ content: t("nsfw_only"), ephemeral: true });
+  if (!interaction.channel.nsfw) {
+    return interaction.reply({
+      content: t("common.errors.nsfw_only"),
+      ephemeral: true
+    });
   }
 
-  // Credenciales
-  const userId = process.env.RULE34_USER_ID;
-  const apiKey = process.env.RULE34_API_KEY;
-
-  if (!userId || !apiKey) {
-    return context.reply({ content: t("api_not_configured"), ephemeral: true });
-  }
-
-  await context.deferReply();
+  await interaction.deferReply();
 
   try {
     await ensureCacheFolder();
 
-    // Parsear tags
-    const tagsInput = context.options.getString("tags");
+    const userId = process.env.RULE34_USER_ID;
+    const apiKey = process.env.RULE34_API_KEY;
+
+    if (!userId || !apiKey) {
+      return interaction.editReply({
+        content: "❌ API credentials not configured."
+      });
+    }
+
+    const tagsInput = interaction.options.getString("tags") || interaction.options.getString("etiquetas");
     const tagList = tagsInput
       .split(",")
       .map(tag => tag.trim().replace(/\s+/g, "_"))
       .filter(tag => tag.length > 0);
 
     if (tagList.length === 0) {
-      return context.editReply({ content: t("no_tags") });
-    }
-
-    // Guardar tags para autocomplete
-    const savedTags = await loadTags();
-    const newTags = [...new Set([...savedTags, ...tagList])];
-    if (newTags.length !== savedTags.length) {
-      await saveTags(newTags);
-    }
-
-    // Obtener imágenes
-    const result = await getImages(tagList, userId, apiKey);
-
-    if (result.images.length === 0) {
-      return context.editReply({
-        content: t("no_images", { tags: tagList.join(", ") })
+      return interaction.editReply({
+        content: t("rule34.no_tags")
       });
     }
 
-    // Estado inicial
+    const result = await getImages(tagList, userId, apiKey);
+
+    if (result.images.length === 0) {
+      return interaction.editReply({
+        content: `❌ No se encontraron imágenes para: ${tagList.join(", ")}`
+      });
+    }
+
+    const savedTags = await loadTags();
+    const updatedTags = [...new Set([...savedTags, ...tagList])];
+    await saveTags(updatedTags);
+
     let currentPage = 1;
     const totalPages = result.images.length;
-    const currentImage = result.images[0];
 
-    // Primera imagen
-    const initialMessage = await updateMessage(
-      context, 
-      currentPage, 
-      totalPages, 
-      currentImage, 
-      tagList, 
-      t
-    );
+    // ✅ DESCARGA Y ENVÍA LA IMAGEN COMO ARCHIVO
+    const currentImage = result.images[0];
+    const imageBuffer = await downloadImage(currentImage.url);
+    const fileExtension = getFileExtension(currentImage.url);
+    const attachment = new AttachmentBuilder(imageBuffer, { 
+      name: `image_${currentImage.id}.${fileExtension}` 
+    });
+
+    const embed = new EmbedBuilder()
+      .setTitle(`Página ${currentPage} de ${totalPages}`)
+      .setDescription(
+        `**Tags:** ${tagList.join(", ")}\n` +
+        `**Score:** ${currentImage.score} | **ID:** ${currentImage.id}\n` +
+        `**Resolución:** ${currentImage.width}x${currentImage.height}`
+      )
+      .setColor(0x0099FF)
+      .setFooter({ text: `${result.images.length} imágenes en cache` })
+      .setImage(`attachment://image_${currentImage.id}.${fileExtension}`); // Referencia al archivo adjunto
     
     const buttons = createNavigationButtons(currentPage, totalPages);
-    const message = await context.editReply({
-      ...initialMessage,
+
+    const message = await interaction.editReply({
+      embeds: [embed],
+      files: [attachment],
       components: [buttons]
     });
 
-    // Collector
     const collector = message.createMessageComponentCollector({
       componentType: ComponentType.Button,
-      time: INTERACTION_TIMEOUT
+      time: 900_000
     });
 
     collector.on("collect", async (i) => {
-      if (i.user.id !== context.user.id) {
-        return i.reply({ content: t("not_your_interaction"), ephemeral: true });
+      if (i.user.id !== interaction.user.id) {
+        return i.reply({
+          content: t("common.errors.not_your_interaction"),
+          ephemeral: true
+        });
       }
 
       if (i.customId === "stop") {
         collector.stop("user_stopped");
-        const disabled = createNavigationButtons(currentPage, totalPages, true);
-        return i.update({ components: [disabled] });
+        
+        const disabledButtons = createNavigationButtons(currentPage, totalPages, true);
+        await i.update({
+          embeds: [i.message.embeds[0]],
+          files: i.message.attachments.map(a => a),
+          components: [disabledButtons]
+        });
+        return;
       }
 
-      // Navegación
       switch (i.customId) {
-        case "first": currentPage = 1; break;
-        case "prev": if (currentPage > 1) currentPage--; break;
-        case "next": if (currentPage < totalPages) currentPage++; break;
-        case "last": currentPage = totalPages; break;
+        case "first":
+          currentPage = 1;
+          break;
+        case "prev":
+          if (currentPage > 1) currentPage--;
+          break;
+        case "next":
+          if (currentPage < totalPages) currentPage++;
+          break;
+        case "last":
+          currentPage = totalPages;
+          break;
       }
 
+      // ✅ DESCARGA Y ENVÍA LA NUEVA IMAGEN
       const newImage = result.images[currentPage - 1];
-      const updated = await updateMessage(
-        context, 
-        currentPage, 
-        totalPages, 
-        newImage, 
-        tagList, 
-        t
-      );
+      const newImageBuffer = await downloadImage(newImage.url);
+      const newFileExtension = getFileExtension(newImage.url);
+      const newAttachment = new AttachmentBuilder(newImageBuffer, { 
+        name: `image_${newImage.id}.${newFileExtension}` 
+      });
+
+      const newEmbed = new EmbedBuilder()
+        .setTitle(`Página ${currentPage} de ${totalPages}`)
+        .setDescription(
+          `**Tags:** ${tagList.join(", ")}\n` +
+          `**Score:** ${newImage.score} | **ID:** ${newImage.id}\n` +
+          `**Resolución:** ${newImage.width}x${newImage.height}`
+        )
+        .setColor(0x0099FF)
+        .setFooter({ text: `${result.images.length} imágenes en cache` })
+        .setImage(`attachment://image_${newImage.id}.${newFileExtension}`);
 
       const newButtons = createNavigationButtons(currentPage, totalPages);
-      await i.update({ ...updated, components: [newButtons] });
+
+      await i.update({
+        embeds: [newEmbed],
+        files: [newAttachment],
+        components: [newButtons]
+      });
     });
 
     collector.on("end", async () => {
-      const disabled = createNavigationButtons(currentPage, totalPages, true);
+      const disabledButtons = createNavigationButtons(currentPage, totalPages, true);
+      
       try {
-        await message.edit({ components: [disabled] });
+        await message.edit({ components: [disabledButtons] });
       } catch (error) {
-        logger.debug("No se pudo deshabilitar botones (mensaje eliminado?)");
+        console.error("Error deshabilitando botones:", error);
       }
     });
 
   } catch (error) {
-    logger.error("Error en /imagen:", error);
+    console.error("Error en /imagen:", error);
     
-    const errorMsg = { content: t("unexpected_error") };
-    if (context.deferred || context.replied) {
-      await context.editReply(errorMsg);
+    const errorMessage = { content: t("common.errors.unexpected") };
+
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply(errorMessage);
     } else {
-      await context.reply({ ...errorMsg, ephemeral: true });
+      await interaction.reply({ ...errorMessage, ephemeral: true });
     }
   }
 }

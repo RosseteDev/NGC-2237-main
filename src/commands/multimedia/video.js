@@ -1,309 +1,472 @@
-// src/commands/nsfw/video.js
-
 import { 
+  SlashCommandBuilder, 
+  EmbedBuilder, 
   ActionRowBuilder, 
   ButtonBuilder, 
   ButtonStyle,
-  ComponentType
+  ComponentType 
 } from "discord.js";
-import { buildCommand } from "../../utils/commandbuilder.js";
-import { createTranslator } from "../../utils/TranslatorHelper.js";
-import { createLogger } from "../../utils/Logger.js";
+import { useLang } from "../../localization/useLang.js";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const logger = createLogger("nsfw:video");
-
-// ============================================
-// CONFIGURACIÓN
-// ============================================
-
 const CACHE_FOLDER = path.join(__dirname, "..", "..", "video_cache");
-const TAGS_FILE = path.join(CACHE_FOLDER, "tags.json");
 
+// ✅ Configuración de cache
 const CACHE_CONFIG = {
-  MIN_VIDEOS: 15,
-  FETCH_LIMIT: 100,
-  MAX_CACHE: 300
+  MIN_VIDEOS: 10,
+  FETCH_LIMIT: 1000,
+  MAX_CACHE: 500
 };
 
-const INTERACTION_TIMEOUT = 900_000;
-
 // ============================================
-// UTILIDADES
+// FUNCIONES DE CACHE
 // ============================================
 
 async function ensureCacheFolder() {
-  await fs.mkdir(CACHE_FOLDER, { recursive: true }).catch(() => {});
-}
-
-async function loadTags() {
   try {
-    return JSON.parse(await fs.readFile(TAGS_FILE, "utf-8"));
-  } catch {
-    return [];
-  }
-}
-
-async function saveTags(tags) {
-  try {
-    await fs.writeFile(TAGS_FILE, JSON.stringify(tags, null, 2));
+    await fs.mkdir(CACHE_FOLDER, { recursive: true });
   } catch (error) {
-    logger.error("Error guardando tags:", error);
+    console.error("Error creando carpeta de caché:", error);
   }
 }
 
 async function loadCache(combinedTag) {
   try {
     const cacheFile = path.join(CACHE_FOLDER, `${combinedTag}.json`);
-    const parsed = JSON.parse(await fs.readFile(cacheFile, "utf-8"));
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+    const fileData = await fs.readFile(cacheFile, "utf-8");
+    const parsed = JSON.parse(fileData);
+    
+    if (parsed && typeof parsed === 'object') {
+      if (parsed.videos && Array.isArray(parsed.videos)) {
+        return {
+          videos: parsed.videos,
+          lastPage: parsed.lastPage || 0
+        };
+      }
+      if (Array.isArray(parsed)) {
+        return {
+          videos: parsed,
+          lastPage: 0
+        };
+      }
+    }
+    
+    return { videos: [], lastPage: 0 };
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return { videos: [], lastPage: 0 };
+    }
+    console.warn(`⚠️ Error leyendo cache ${combinedTag}:`, error.message);
+    return { videos: [], lastPage: 0 };
   }
 }
 
-async function saveCache(combinedTag, videos) {
+async function saveCache(combinedTag, videos, lastPage) {
   try {
     const cacheFile = path.join(CACHE_FOLDER, `${combinedTag}.json`);
-    const limited = videos.slice(-CACHE_CONFIG.MAX_CACHE);
-    await fs.writeFile(cacheFile, JSON.stringify(limited, null, 2));
-    logger.debug(`💾 Cache guardado: ${combinedTag} (${limited.length} videos)`);
+    const limitedVideos = videos.slice(-CACHE_CONFIG.MAX_CACHE);
+    const cacheData = {
+      videos: limitedVideos,
+      lastPage: lastPage,
+      lastUpdated: new Date().toISOString()
+    };
+    await fs.writeFile(cacheFile, JSON.stringify(cacheData, null, 2));
+    console.log(`💾 Cache guardado: ${combinedTag} (${limitedVideos.length} videos)`);
   } catch (error) {
-    logger.error("Error guardando caché:", error);
+    console.error("Error guardando caché:", error);
   }
 }
 
 // ============================================
-// API
+// BÚSQUEDA DE VIDEOS
 // ============================================
 
-async function searchRule34(tags, userId, apiKey, page = 0) {
+async function searchRule34Videos(tags, userId, apiKey, page = 0) {
   const tagsQuery = tags.join("+");
   const pid = page * CACHE_CONFIG.FETCH_LIMIT;
   const url = `https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags=${tagsQuery}&limit=${CACHE_CONFIG.FETCH_LIMIT}&pid=${pid}&json=1&user_id=${userId}&api_key=${apiKey}`;
 
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  try {
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
-  const data = await response.json();
-  if (!Array.isArray(data)) return [];
-  
-  return data
-    .filter(post => 
-      post.file_url && 
-      /\.(mp4|webm)$/i.test(post.file_url)
-    )
-    .map(post => ({
-      url: post.file_url,
-      preview: post.preview_url || post.sample_url,
-      id: post.id,
-      score: post.score || 0,
-      width: post.width,
-      height: post.height
-    }));
+    const text = await response.text();
+    
+    if (!text || text.trim() === '') {
+      return [];
+    }
+    
+    let apiData;
+    try {
+      apiData = JSON.parse(text);
+    } catch (parseError) {
+      console.error(`❌ Error parseando JSON`);
+      return [];
+    }
+    
+    if (!Array.isArray(apiData) || apiData.length === 0) {
+      return [];
+    }
+    
+    const videos = apiData
+      .filter(post => {
+        if (!post.file_url) return false;
+        const videoExtensions = /\.(mp4|webm|mov|avi|mkv|flv|wmv)(\?.*)?$/i;
+        const isVideo = videoExtensions.test(post.file_url);
+        const isGif = post.file_url.includes('.gif');
+        return isVideo || isGif;
+      })
+      .map(post => ({
+        url: post.file_url,
+        preview: post.preview_url || post.sample_url,
+        id: post.id,
+        score: post.score || 0,
+        width: post.width || 0,
+        height: post.height || 0,
+        tags: post.tags || ''
+      }));
+    
+    console.log(`✅ Encontrados ${videos.length} videos`);
+    return videos;
+    
+  } catch (error) {
+    console.error(`❌ Error en búsqueda:`, error.message);
+    throw error;
+  }
 }
 
 async function getVideos(tags, userId, apiKey) {
   const combinedTag = tags.join("_");
-  let cached = await loadCache(combinedTag);
+  const cache = await loadCache(combinedTag);
+  const cachedVideos = cache.videos;
+  const lastPage = cache.lastPage || 0;
   
-  logger.debug(`📦 Cache: ${cached.length} videos para "${combinedTag}"`);
-  
-  if (cached.length >= CACHE_CONFIG.MIN_VIDEOS) {
-    return { videos: cached, fromCache: true, newCount: 0 };
+  if (cachedVideos.length >= CACHE_CONFIG.MIN_VIDEOS) {
+    return {
+      videos: cachedVideos,
+      fromCache: true,
+      newCount: 0
+    };
   }
   
-  logger.debug(`🔍 Cache insuficiente, buscando nuevos...`);
-  
-  const page = Math.floor(cached.length / CACHE_CONFIG.FETCH_LIMIT);
-  const results = await searchRule34(tags, userId, apiKey, page);
-  
-  if (results.length === 0) {
-    logger.warn(`⚠️ No se encontraron más videos (página ${page})`);
-    return { videos: cached, fromCache: true, newCount: 0, exhausted: true };
+  try {
+    const results = await searchRule34Videos(tags, userId, apiKey, lastPage);
+    
+    if (results.length === 0) {
+      return {
+        videos: cachedVideos,
+        fromCache: true,
+        newCount: 0,
+        exhausted: true
+      };
+    }
+    
+    const existingUrls = new Set(cachedVideos.map(v => v.url));
+    const newVideos = results.filter(v => !existingUrls.has(v.url));
+    const updatedCache = [...cachedVideos, ...newVideos];
+    
+    await saveCache(combinedTag, updatedCache, lastPage + 1);
+    
+    return {
+      videos: updatedCache,
+      fromCache: false,
+      newCount: newVideos.length
+    };
+    
+  } catch (error) {
+    if (cachedVideos.length > 0) {
+      return {
+        videos: cachedVideos,
+        fromCache: true,
+        newCount: 0,
+        error: error.message
+      };
+    }
+    throw error;
   }
-  
-  const existingUrls = new Set(cached.map(v => v.url));
-  const newVideos = results.filter(v => !existingUrls.has(v.url));
-  
-  logger.debug(`✨ Nuevos: ${newVideos.length} videos`);
-  
-  const updated = [...cached, ...newVideos];
-  await saveCache(combinedTag, updated);
-  
-  return { videos: updated, fromCache: false, newCount: newVideos.length };
 }
 
 // ============================================
-// AUTOCOMPLETE
+// AUTOCOMPLETADO - MEJORADO CON RETRY
 // ============================================
 
+async function autocompleteTags(interaction, current) {
+  try {
+    console.log(`🔍 [AUTOCOMPLETE] Buscando: "${current}"`);
+    
+    const parts = current.split(',').map(s => s.trim());
+    const lastTag = parts[parts.length - 1];
+    const previousTags = parts.slice(0, -1);
+    
+    if (!lastTag || lastTag.length < 2) {
+      console.log(`⚠️ [AUTOCOMPLETE] Input muy corto`);
+      return [];
+    }
+    
+    // ✅ SOLUCIÓN: Múltiples intentos con diferentes métodos
+    const suggestions = await fetchSuggestionsWithRetry(lastTag);
+    
+    if (!suggestions || suggestions.length === 0) {
+      console.log(`📭 [AUTOCOMPLETE] Sin sugerencias`);
+      return [];
+    }
+    
+    const prefix = previousTags.length > 0 ? previousTags.join(', ') + ', ' : '';
+    
+    const choices = suggestions
+      .slice(0, 25)
+      .map(item => {
+        const tag = typeof item === 'string' ? item : (item.value || item.label);
+        const label = typeof item === 'object' && item.label ? item.label : tag;
+        
+        return {
+          name: label.substring(0, 100),
+          value: (prefix + tag).substring(0, 100)
+        };
+      });
+    
+    console.log(`✅ [AUTOCOMPLETE] ${choices.length} sugerencias listas`);
+    return choices;
+      
+  } catch (error) {
+    console.error('❌ [AUTOCOMPLETE] Error:', error.message);
+    return [];
+  }
+}
+
+// ✅ NUEVA FUNCIÓN: Intentar múltiples métodos para obtener sugerencias
+async function fetchSuggestionsWithRetry(tag) {
+  // Método 1: API oficial de autocomplete
+  try {
+    console.log(`🌐 [MÉTODO 1] Intentando API oficial...`);
+    const url = `https://ac.rule34.xxx/autocomplete.php?q=${encodeURIComponent(tag)}`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+        'Referer': 'https://rule34.xxx/',
+        'Origin': 'https://rule34.xxx'
+      },
+      signal: AbortSignal.timeout(3000) // 3 segundos timeout
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0 && data[0] !== "error") {
+        console.log(`✅ [MÉTODO 1] Éxito: ${data.length} sugerencias`);
+        return data;
+      }
+    }
+  } catch (error) {
+    console.log(`⚠️ [MÉTODO 1] Falló: ${error.message}`);
+  }
+  
+  // Método 2: Buscar tags populares que coincidan localmente
+  try {
+    console.log(`🌐 [MÉTODO 2] Usando tags populares...`);
+    return getPopularTagsSuggestions(tag);
+  } catch (error) {
+    console.log(`⚠️ [MÉTODO 2] Falló: ${error.message}`);
+  }
+  
+  return [];
+}
+
+// ✅ NUEVA FUNCIÓN: Fallback con tags populares
+function getPopularTagsSuggestions(input) {
+  const popularTags = [
+    'animated', 'video', '3d', '2d', 'sound', 'loop',
+    'anal', 'oral', 'vaginal', 'pov', 'first_person_view',
+    'big_breasts', 'small_breasts', 'ass', 'pussy', 'penis',
+    'cum', 'creampie', 'facial', 'handjob', 'blowjob',
+    'lesbian', 'yuri', 'yaoi', 'futanari', 'trap',
+    'milf', 'teen', 'young', 'old', 'mature',
+    'furry', 'anthro', 'feral', 'pokemon', 'digimon',
+    'overwatch', 'league_of_legends', 'final_fantasy', 'zelda',
+    'naruto', 'one_piece', 'dragon_ball', 'bleach', 'fairy_tail',
+    'ahegao', 'bdsm', 'bondage', 'tentacles', 'monster',
+    'elf', 'demon', 'angel', 'catgirl', 'doggirl',
+    'blonde', 'brunette', 'redhead', 'black_hair', 'white_hair',
+    'long_hair', 'short_hair', 'ponytail', 'twin_tails',
+    'glasses', 'stockings', 'lingerie', 'nude', 'clothed'
+  ];
+  
+  const lowerInput = input.toLowerCase();
+  const matches = popularTags
+    .filter(tag => tag.includes(lowerInput))
+    .map(tag => ({ value: tag, label: tag }));
+  
+  console.log(`📋 [FALLBACK] ${matches.length} tags populares encontradas`);
+  return matches;
+}
+
+// ============================================
+// UI HELPERS
+// ============================================
+
+function createNavigationButtons(currentPage, totalPages, disabled = false) {
+  return new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId("first")
+        .setEmoji("⏮️")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(disabled || currentPage === 1),
+      new ButtonBuilder()
+        .setCustomId("prev")
+        .setEmoji("◀️")
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(disabled || currentPage === 1),
+      new ButtonBuilder()
+        .setCustomId("next")
+        .setEmoji("▶️")
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(disabled || currentPage === totalPages),
+      new ButtonBuilder()
+        .setCustomId("last")
+        .setEmoji("⏭️")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(disabled || currentPage === totalPages)
+    );
+}
+
+function createVideoMessage(video, currentPage, totalPages, tags) {
+  return [
+    `[Video ${currentPage} de ${totalPages}](${video.url})`,
+    `Tags: ${tags.join(", ")}`,
+    `Score: ${video.score} | ID: ${video.id}`
+  ].join("\n");
+}
+
+// ============================================
+// EXPORTS DEL COMANDO
+// ============================================
+
+export const data = new SlashCommandBuilder()
+  .setName("video")
+  .setDescription("Search videos by tags")
+  .addStringOption(option =>
+    option
+      .setName("tags")
+      .setDescription("Tags to search (comma separated)")
+      .setRequired(true)
+      .setAutocomplete(true)
+  )
+  .setNSFW(true);
+
+// ✅ CRÍTICO: Esta función DEBE estar exportada
 export async function autocomplete(interaction) {
-  const focused = interaction.options.getFocused();
-  
-  if (focused.length < 2) {
-    return interaction.respond([
-      { name: "🔥 Busca al menos 2 caracteres", value: "anime" }
-    ]);
+  try {
+    console.log(`🎯 [AUTOCOMPLETE] Triggered for: ${interaction.commandName}`);
+    
+    const focusedOption = interaction.options.getFocused(true);
+    console.log(`📝 [AUTOCOMPLETE] Option: ${focusedOption.name}`);
+    
+    if (focusedOption.name === "tags") {
+      const choices = await autocompleteTags(interaction, focusedOption.value);
+      await interaction.respond(choices);
+      console.log(`✅ [AUTOCOMPLETE] Sent ${choices.length} choices`);
+    } else {
+      await interaction.respond([]);
+    }
+  } catch (error) {
+    console.error(`❌ [AUTOCOMPLETE] Error:`, error);
+    try {
+      await interaction.respond([]);
+    } catch {}
   }
-  
-  const tags = await loadTags();
-  const matches = tags
-    .filter(tag => tag.toLowerCase().includes(focused.toLowerCase()))
-    .slice(0, 25)
-    .map(tag => ({ name: tag, value: tag }));
-  
-  if (matches.length === 0) {
-    return interaction.respond([
-      { name: `"${focused}" - Escribe y presiona Enter`, value: focused }
-    ]);
-  }
-  
-  await interaction.respond(matches);
 }
 
-// ============================================
-// UI
-// ============================================
+export async function execute(interaction) {
+  const t = await useLang(interaction);
 
-function createNavigationButtons(page, total, disabled = false) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("first")
-      .setEmoji("⏮️")
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(disabled || page === 1),
-    new ButtonBuilder()
-      .setCustomId("prev")
-      .setEmoji("◀️")
-      .setStyle(ButtonStyle.Primary)
-      .setDisabled(disabled || page === 1),
-    new ButtonBuilder()
-      .setCustomId("stop")
-      .setEmoji("✖️")
-      .setStyle(ButtonStyle.Danger)
-      .setDisabled(disabled),
-    new ButtonBuilder()
-      .setCustomId("next")
-      .setEmoji("▶️")
-      .setStyle(ButtonStyle.Primary)
-      .setDisabled(disabled || page === total),
-    new ButtonBuilder()
-      .setCustomId("last")
-      .setEmoji("⏭️")
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(disabled || page === total)
-  );
-}
-
-// ============================================
-// COMMAND
-// ============================================
-
-export const data = buildCommand("nsfw", "video");
-
-export async function execute(context) {
-  const t = await createTranslator(data, context);
-
-  // Validaciones
-  if (!context.guild) {
-    return context.reply({ content: t("guild_only"), ephemeral: true });
+  if (!interaction.guild) {
+    return interaction.reply({
+      content: t("common.errors.guild_only"),
+      ephemeral: true
+    });
   }
 
-  if (!context.channel.nsfw) {
-    return context.reply({ content: t("nsfw_only"), ephemeral: true });
+  if (!interaction.channel.nsfw) {
+    return interaction.reply({
+      content: t("common.errors.nsfw_only"),
+      ephemeral: true
+    });
   }
 
-  const userId = process.env.RULE34_USER_ID;
-  const apiKey = process.env.RULE34_API_KEY;
-
-  if (!userId || !apiKey) {
-    return context.reply({ content: t("api_not_configured"), ephemeral: true });
-  }
-
-  await context.deferReply();
+  await interaction.deferReply();
 
   try {
     await ensureCacheFolder();
 
-    // Parsear tags
-    const tagsInput = context.options.getString("tags");
+    const userId = process.env.RULE34_USER_ID;
+    const apiKey = process.env.RULE34_API_KEY;
+
+    if (!userId || !apiKey) {
+      return interaction.editReply({
+        content: "⚠️ Credenciales de API no configuradas"
+      });
+    }
+
+    const tagsInput = interaction.options.getString("tags");
     const tagList = tagsInput
       .split(",")
       .map(tag => tag.trim().replace(/\s+/g, "_"))
       .filter(tag => tag.length > 0);
 
     if (tagList.length === 0) {
-      return context.editReply({ content: t("no_tags") });
-    }
-
-    // Guardar tags
-    const savedTags = await loadTags();
-    const newTags = [...new Set([...savedTags, ...tagList])];
-    if (newTags.length !== savedTags.length) {
-      await saveTags(newTags);
-    }
-
-    // Obtener videos
-    const result = await getVideos(tagList, userId, apiKey);
-
-    if (result.videos.length === 0) {
-      return context.editReply({
-        content: t("no_videos", { tags: tagList.join(", ") })
+      return interaction.editReply({
+        content: "⚠️ Debes proporcionar al menos una etiqueta"
       });
     }
 
-    // Estado inicial
-    let currentPage = 1;
-    const totalPages = result.videos.length;
-    const currentVideo = result.videos[0];
+    const result = await getVideos(tagList, userId, apiKey);
 
-    // Primera respuesta
-    const embed = context.embeds.info(
-      t("page_title", { current: currentPage, total: totalPages }),
-      t("video_info", {
-        tags: tagList.join(", "),
-        score: currentVideo.score,
-        id: currentVideo.id,
-        width: currentVideo.width,
-        height: currentVideo.height,
-        url: currentVideo.url
-      })
-    );
-    
-    if (currentVideo.preview) {
-      embed.setImage(currentVideo.preview);
+    if (result.videos.length === 0) {
+      return interaction.editReply({
+        content: `❌ No se encontraron videos para: ${tagList.join(", ")}`
+      });
     }
     
-    embed.setFooter({ text: t("footer", { count: totalPages }) });
+    let currentPage = 1;
+    const totalPages = result.videos.length;
+
+    const content = createVideoMessage(
+      result.videos[0], 
+      currentPage, 
+      totalPages, 
+      tagList
+    );
 
     const buttons = createNavigationButtons(currentPage, totalPages);
-    const message = await context.editReply({
-      embeds: [embed],
+
+    const message = await interaction.editReply({
+      content: content,
       components: [buttons]
     });
 
-    // Collector
     const collector = message.createMessageComponentCollector({
       componentType: ComponentType.Button,
-      time: INTERACTION_TIMEOUT
+      time: 900_000
     });
 
     collector.on("collect", async (i) => {
-      if (i.user.id !== context.user.id) {
-        return i.reply({ content: t("not_your_interaction"), ephemeral: true });
+      if (i.user.id !== interaction.user.id) {
+        return i.reply({
+          content: "❌ Esta no es tu interacción",
+          ephemeral: true
+        });
       }
 
-      if (i.customId === "stop") {
-        collector.stop("user_stopped");
-        const disabled = createNavigationButtons(currentPage, totalPages, true);
-        return i.update({ components: [disabled] });
-      }
+      await i.deferUpdate();
 
-      // Navegación
       switch (i.customId) {
         case "first": currentPage = 1; break;
         case "prev": if (currentPage > 1) currentPage--; break;
@@ -311,47 +474,33 @@ export async function execute(context) {
         case "last": currentPage = totalPages; break;
       }
 
-      const newVideo = result.videos[currentPage - 1];
-      
-      const newEmbed = context.embeds.info(
-        t("page_title", { current: currentPage, total: totalPages }),
-        t("video_info", {
-          tags: tagList.join(", "),
-          score: newVideo.score,
-          id: newVideo.id,
-          width: newVideo.width,
-          height: newVideo.height,
-          url: newVideo.url
-        })
+      const newContent = createVideoMessage(
+        result.videos[currentPage - 1],
+        currentPage,
+        totalPages,
+        tagList
       );
-      
-      if (newVideo.preview) {
-        newEmbed.setImage(newVideo.preview);
-      }
-      
-      newEmbed.setFooter({ text: t("footer", { count: totalPages }) });
-
       const newButtons = createNavigationButtons(currentPage, totalPages);
-      await i.update({ embeds: [newEmbed], components: [newButtons] });
+
+      await i.editReply({
+        content: newContent,
+        components: [newButtons]
+      });
     });
 
-    collector.on("end", async () => {
-      const disabled = createNavigationButtons(currentPage, totalPages, true);
-      try {
-        await message.edit({ components: [disabled] });
-      } catch (error) {
-        logger.debug("No se pudo deshabilitar botones");
-      }
+    collector.on("end", () => {
+      const disabledButtons = createNavigationButtons(currentPage, totalPages, true);
+      message.edit({ components: [disabledButtons] }).catch(() => {});
     });
 
   } catch (error) {
-    logger.error("Error en /video:", error);
+    console.error("❌ Error ejecutando comando:", error);
+    const errorMsg = error.message || "Error inesperado";
     
-    const errorMsg = { content: t("unexpected_error") };
-    if (context.deferred || context.replied) {
-      await context.editReply(errorMsg);
+    if (interaction.deferred) {
+      return interaction.editReply({ content: `❌ ${errorMsg}` });
     } else {
-      await context.reply({ ...errorMsg, ephemeral: true });
+      return interaction.reply({ content: `❌ ${errorMsg}`, ephemeral: true });
     }
   }
 }
