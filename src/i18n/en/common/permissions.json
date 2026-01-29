@@ -1,0 +1,5 @@
+{
+  "no_permission": "You don't have permission to use this command",
+  "bot_no_permission": "I don't have permission to perform this action",
+  "admin_only": "This command is only for administrators"
+}

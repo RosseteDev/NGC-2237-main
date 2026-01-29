@@ -1,0 +1,5 @@
+{
+  "generic_error": "An error occurred",
+  "command_failed": "The command failed to execute",
+  "timeout": "The command took too long to respond"
+}

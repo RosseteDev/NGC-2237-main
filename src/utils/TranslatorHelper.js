@@ -108,6 +108,12 @@ export async function getGuildLocale(guildId) {
   try {
     console.log(`📡 [getGuildLocale] Consultando DB...`);
     
+    // Verificar que db esté disponible
+    if (!db || !db.getGuildLang) {
+      console.warn(`⚠️  [getGuildLocale] DB no inicializada, usando fallback`);
+      return DEFAULT_LOCALE;
+    }
+    
     // Timeout agresivo para evitar delays
     const lang = await Promise.race([
       db.getGuildLang(guildId),
@@ -176,8 +182,16 @@ export async function createTranslator(commandData, context) {
       console.log('✅ Idioma obtenido de DB:', locale);
     } catch (error) {
       console.error('❌ Error obteniendo idioma:', error.message);
-      locale = DEFAULT_LOCALE;
-      console.log('⚠️  Usando idioma por defecto:', locale);
+      console.log('⚠️  DB no disponible, intentando detectar de la interaction...');
+      
+      // Fallback: intentar detectar del locale de Discord
+      if (context.locale) {
+        locale = context.locale.startsWith('es') ? 'es' : DEFAULT_LOCALE;
+        console.log(`✅ Idioma detectado desde interaction.locale: ${locale}`);
+      } else {
+        locale = DEFAULT_LOCALE;
+        console.log('⚠️  Usando idioma por defecto:', locale);
+      }
     }
   } else {
     console.log('💬 Comando en DM, usando idioma por defecto');
@@ -198,6 +212,20 @@ export async function createTranslator(commandData, context) {
   
   console.log('\n📚 Cargando archivos de traducción...');
   
+  // Función helper para merge profundo
+  function deepMerge(target, source) {
+    for (const [key, value] of Object.entries(source)) {
+      if (typeof value === 'object' && value !== null && typeof target[key] === 'object' && target[key] !== null) {
+        // Merge profundo para objetos anidados
+        deepMerge(target[key], value);
+      } else {
+        // Sobrescribir valores primitivos
+        target[key] = value;
+      }
+    }
+    return target;
+  }
+  
   const translations = {};
   
   // 1. Comunes globales (menor prioridad)
@@ -207,7 +235,7 @@ export async function createTranslator(commandData, context) {
     const loaded = await loadJSON(`common/${file}`, locale);
     const keysCount = Object.keys(loaded).length;
     console.log(`   - common/${file}: ${keysCount} claves`);
-    Object.assign(translations, loaded);
+    deepMerge(translations, loaded);
   }
   
   // 2. Compartidas de la categoría (prioridad media)
@@ -217,7 +245,7 @@ export async function createTranslator(commandData, context) {
     const loaded = await loadJSON(sharedPath, locale);
     const keysCount = Object.keys(loaded).length;
     console.log(`   - ${sharedPath}: ${keysCount} claves`);
-    Object.assign(translations, loaded);
+    deepMerge(translations, loaded);
   }
   
   // 3. Comando específico (mayor prioridad)
@@ -225,22 +253,48 @@ export async function createTranslator(commandData, context) {
     const commandPath = `commands/${commandData.category}/${commandData.name}.json`;
     console.log(`3️⃣  Cargando comando específico...`);
     const loaded = await loadJSON(commandPath, locale);
-    const keysCount = Object.keys(loaded).length;
-    console.log(`   - ${commandPath}: ${keysCount} claves`);
     
-    // 🔍 DEBUG: Mostrar estructura del archivo cargado
-    if (keysCount > 0) {
-      console.log('   📄 Estructura del archivo:');
-      console.log('      Top-level keys:', Object.keys(loaded).join(', '));
-      if (loaded.responses) {
-        console.log('      Keys en "responses":', Object.keys(loaded.responses).slice(0, 5).join(', '), '...');
+    // Contar claves correctamente (incluyendo dentro de responses)
+    let totalKeys = 0;
+    let responseKeys = 0;
+    
+    if (loaded && typeof loaded === 'object') {
+      for (const [key, value] of Object.entries(loaded)) {
+        if (key === 'responses' && typeof value === 'object') {
+          responseKeys = Object.keys(value).length;
+          totalKeys += responseKeys;
+        } else if (typeof value !== 'object' || value === null) {
+          totalKeys++;
+        }
       }
     }
     
-    Object.assign(translations, loaded);
+    console.log(`   - ${commandPath}: ${totalKeys} claves${responseKeys > 0 ? ` (${responseKeys} en responses)` : ''}`);
+    
+    // 🔍 DEBUG: Mostrar estructura del archivo cargado
+    if (totalKeys > 0) {
+      console.log('   📄 Estructura del archivo:');
+      console.log('      Top-level keys:', Object.keys(loaded).filter(k => k !== 'responses').join(', '));
+      if (loaded.responses) {
+        const responseKeysList = Object.keys(loaded.responses);
+        console.log('      Keys en "responses":', responseKeysList.slice(0, 5).join(', '), responseKeysList.length > 5 ? `... (+${responseKeysList.length - 5} más)` : '');
+      }
+    }
+    
+    deepMerge(translations, loaded);
   }
   
-  console.log(`\n📊 Total de claves cargadas: ${Object.keys(translations).length}`);
+  // Contar claves reales (incluyendo dentro de responses)
+  let totalKeysCount = 0;
+  for (const [key, value] of Object.entries(translations)) {
+    if (key === 'responses' && typeof value === 'object') {
+      totalKeysCount += Object.keys(value).length;
+    } else if (typeof value !== 'object' || value === null) {
+      totalKeysCount++;
+    }
+  }
+  
+  console.log(`\n📊 Total de claves cargadas: ${totalKeysCount}`);
   
   // 4. Fallback a inglés si falta alguna key (solo si el locale no es inglés)
   let fallbackTranslations = {};
@@ -249,17 +303,17 @@ export async function createTranslator(commandData, context) {
     
     // Cargar las mismas rutas pero en inglés
     for (const file of commonFiles) {
-      Object.assign(fallbackTranslations, await loadJSON(`common/${file}`, FALLBACK_LOCALE));
+      deepMerge(fallbackTranslations, await loadJSON(`common/${file}`, FALLBACK_LOCALE));
     }
     
     if (commandData.category) {
       const sharedPath = `commands/${commandData.category}/shared.json`;
-      Object.assign(fallbackTranslations, await loadJSON(sharedPath, FALLBACK_LOCALE));
+      deepMerge(fallbackTranslations, await loadJSON(sharedPath, FALLBACK_LOCALE));
     }
     
     if (commandData.category && commandData.name) {
       const commandPath = `commands/${commandData.category}/${commandData.name}.json`;
-      Object.assign(fallbackTranslations, await loadJSON(commandPath, FALLBACK_LOCALE));
+      deepMerge(fallbackTranslations, await loadJSON(commandPath, FALLBACK_LOCALE));
     }
     
     console.log(`   Fallback: ${Object.keys(fallbackTranslations).length} claves`);
@@ -336,14 +390,26 @@ export async function createTranslator(commandData, context) {
    * 4. Dot notation: "responses.error"
    */
   function findNestedKey(obj, key) {
+    const debugKey = process.env.DEBUG_KEY || null;
+    const showDebug = debugKey && key.includes(debugKey);
+    
+    if (showDebug) {
+      console.log(`\n🔍 findNestedKey DEBUG para: "${key}"`);
+      console.log(`   Objeto top-level keys:`, Object.keys(obj).join(', '));
+    }
+    
     // 1. Búsqueda directa
     if (obj[key] && typeof obj[key] === 'string') {
+      if (showDebug) console.log(`   ✅ Encontrado en búsqueda directa`);
       return obj[key];
     }
     
     // 2. Búsqueda en "responses" (estructura de comandos)
-    if (obj.responses && obj.responses[key] && typeof obj.responses[key] === 'string') {
-      return obj.responses[key];
+    if (obj.responses && typeof obj.responses === 'object') {
+      if (obj.responses[key] && typeof obj.responses[key] === 'string') {
+        if (showDebug) console.log(`   ✅ Encontrado en responses`);
+        return obj.responses[key];
+      }
     }
     
     // 3. Búsqueda con dot notation (ej: "responses.title", "options.query.description")
@@ -357,6 +423,7 @@ export async function createTranslator(commandData, context) {
       }
       
       if (typeof current === 'string') {
+        if (showDebug) console.log(`   ✅ Encontrado con dot notation`);
         return current;
       }
     }
@@ -365,11 +432,13 @@ export async function createTranslator(commandData, context) {
     for (const topKey of Object.keys(obj)) {
       if (typeof obj[topKey] === 'object' && obj[topKey] !== null) {
         if (obj[topKey][key] && typeof obj[topKey][key] === 'string') {
+          if (showDebug) console.log(`   ✅ Encontrado en ${topKey}`);
           return obj[topKey][key];
         }
       }
     }
     
+    if (showDebug) console.log(`   ❌ NO encontrado`);
     return null;
   }
   

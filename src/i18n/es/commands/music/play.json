@@ -1,6 +1,6 @@
 {
   "command": {
-    "name": "play",
+    "name": "reproducir",
     "description": "Reproduce una canción o una lista de reproducción"
   },
   "options": {

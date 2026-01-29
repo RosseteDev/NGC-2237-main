@@ -511,8 +511,8 @@ export async function execute(context) {
         logger.info("✅ Reproducción iniciada correctamente");
         
         // Enviar embed
-        const embed = context.embeds.music(next);
-        
+        const embed = createNowPlayingEmbed(next, t); // ← Usar función helper
+
         if (!queue.contextHandled && queue.originalContext) {
           await queue.originalContext.editReply({ embeds: [embed] });
           queue.contextHandled = true;

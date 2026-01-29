@@ -222,6 +222,10 @@ export function buildCommand(category, commandName) {
     }
   }
 
+  // ✅ Agregar metadata necesaria para el traductor
+  command.category = category;
+  command.name = commandName;
+
   return command;
 }
 

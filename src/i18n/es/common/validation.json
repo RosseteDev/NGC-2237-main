@@ -1,0 +1,5 @@
+{
+  "invalid_input": "Entrada inválida proporcionada",
+  "missing_parameter": "Falta un parámetro requerido",
+  "invalid_parameter": "Uno o más parámetros son inválidos"
+}
