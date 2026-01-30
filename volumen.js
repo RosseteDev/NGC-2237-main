@@ -2,11 +2,14 @@
 
 import { buildCommand } from "../../utils/commandbuilder.js";
 import { createLogger } from "../../utils/Logger.js";
+import { join } from "path";
 
 const logger = createLogger("music:volume");
 
 // ✅ SINTAXIS CORRECTA: buildCommand(category, commandName)
-export const data = buildCommand("music", "volume");
+export const data = buildCommand("music", "volume", {
+  i18nPath: join(__dirname, "..", "i18n"),
+});
 
 export async function execute(context) {
   const { guild, client, member } = context;

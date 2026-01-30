@@ -1,6 +1,7 @@
 {
   "name": "video",
   "description": "Buscar videos NSFW en Rule34",
+  "aliases": ["nsfwvideo", "vid", "video"]
   "options": {
     "tags": {
       "description": "Etiquetas de búsqueda (separadas por comas)"

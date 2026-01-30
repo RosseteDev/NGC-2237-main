@@ -1,7 +1,8 @@
 {
   "command": {
     "name": "prefix",
-    "description": "View or change the server's command prefix"
+    "description": "View or change the server's command prefix",
+    "aliases": ["prefijo", "pref", "prefix"]
   },
   "options": {
     "new_prefix": {

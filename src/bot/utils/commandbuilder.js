@@ -32,6 +32,7 @@ function loadCommandConfig(category, commandName, lang = "en") {
   const separatePath = join(
     __dirname,
     "..",
+    "..",
     "i18n",
     lang,
     "commands",
@@ -56,6 +57,7 @@ function loadCommandConfig(category, commandName, lang = "en") {
   
   const combinedPath = join(
     __dirname,
+    "..",
     "..",
     "i18n",
     lang,

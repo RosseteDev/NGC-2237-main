@@ -35,7 +35,7 @@ clearTranslationCache();
 
 // Cargar comandos
 logger.info("Cargando comandos...");
-await loadCommands(path.resolve("src/commands"), client.commands);
+await loadCommands(path.resolve("src/bot/commands"), client.commands);
 logger.info(`✅ ${client.commands.size} comandos cargados`);
 
 // Inicializar base de datos

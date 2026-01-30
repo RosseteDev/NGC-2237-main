@@ -7,7 +7,7 @@
 
 import 'dotenv/config';
 import pg from 'pg';
-import { createLogger } from '../src/utils/Logger.js';
+import { createLogger } from './Logger.js';
 
 const { Pool } = pg;
 const logger = createLogger('db-test');

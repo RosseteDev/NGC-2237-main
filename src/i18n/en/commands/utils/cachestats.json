@@ -1,6 +1,7 @@
 {
   "name": "estadisticascache",
   "description": "Ver estadísticas de rendimiento del caché",
+  "aliases": ["cache", "stats"],
   "responses": {
     "title": "📊 Estadísticas de Caché",
     "description": "Métricas de rendimiento de la base de datos",

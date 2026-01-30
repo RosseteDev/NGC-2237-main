@@ -1,7 +1,8 @@
 {
   "command": {
     "name": "language",
-    "description": "Change the server language"
+    "description": "Change the server language",
+    "aliases": ["idioma", "lang", "lenguaje"]
   },
   "options": {
     "lang": {

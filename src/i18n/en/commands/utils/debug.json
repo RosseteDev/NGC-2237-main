@@ -1,7 +1,8 @@
 {
   "command": {
     "name": "debug",
-    "description": "Control debug mode (Admin Only)"
+    "description": "Control debug mode (Admin Only)",
+    "aliases": ["depuracion", "modo-debug"]
   },
   "subcommands": {
     "enable": {

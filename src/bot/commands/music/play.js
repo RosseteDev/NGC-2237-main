@@ -5,6 +5,7 @@ import { createLogger } from "../../utils/Logger.js";
 import { createTranslator } from "../../utils/TranslatorHelper.js";
 import { queues, buildSearchIdentifier } from "../../handlers/music/utils.js";
 import { hardLockedGuilds } from "../../handlers/music/voiceStateHandler.js";
+import { createNowPlayingEmbed } from "../../handlers/music/utils.js";
 
 const logger = createLogger("music:play");
 

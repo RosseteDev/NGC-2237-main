@@ -1,0 +1,9 @@
+{
+  "now_playing_title": "Now Playing",
+  "author": "Author",
+  "duration": "Duration",
+  "unknown": "Unknown",
+  "live": "Live",
+  "added_title": "Added to Queue",
+  "position": "Position"
+}

@@ -1,7 +1,8 @@
 {
   "command": {
     "name": "prefijo",
-    "description": "Ver o cambiar el prefijo de comandos del servidor"
+    "description": "Ver o cambiar el prefijo de comandos del servidor",
+    "aliases": ["prefix", "pref", "prefijo"]
   },
   "options": {
     "new_prefix": {

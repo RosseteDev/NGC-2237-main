@@ -1,7 +1,8 @@
 {
   "command": {
     "name": "depuracion",
-    "description": "Controlar modo de depuración (Solo Admin)"
+    "description": "Controlar modo de depuración (Solo Admin)",
+    "aliases": ["debug", "modo-debug"]
   },
   "subcommands": {
     "enable": {

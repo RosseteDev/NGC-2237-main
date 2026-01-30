@@ -214,23 +214,36 @@ async function getImages(tags, userId, apiKey) {
 // AUTOCOMPLETADO
 async function autocompleteTags(interaction, current) {
   try {
+    console.log('\n🔍 [AUTOCOMPLETE] ==================');
+    console.log('📝 Input completo:', JSON.stringify(current));
+    
     const parts = current.split(',').map(s => s.trim());
     const lastTag = parts[parts.length - 1];
     const previousTags = parts.slice(0, -1);
     
+    console.log('🏷️  Última tag:', JSON.stringify(lastTag));
+    console.log('📋 Tags previas:', JSON.stringify(previousTags));
+    
     if (!lastTag || lastTag.length < 2) {
+      console.log('⚠️  Tag muy corta, ignorando (mínimo 2 caracteres)');
       return [];
     }
     
     const suggestions = await fetchSuggestionsWithRetry(lastTag);
     
+    console.log(`✨ Sugerencias obtenidas: ${suggestions?.length || 0}`);
+    if (suggestions && suggestions.length > 0) {
+      console.log('📦 Primeras 3 sugerencias:', JSON.stringify(suggestions.slice(0, 3), null, 2));
+    }
+    
     if (!suggestions || suggestions.length === 0) {
+      console.log('❌ Sin sugerencias, retornando vacío');
       return [];
     }
     
     const prefix = previousTags.length > 0 ? previousTags.join(', ') + ', ' : '';
     
-    return suggestions
+    const formatted = suggestions
       .slice(0, 25)
       .map(item => {
         const tag = typeof item === 'string' ? item : (item.value || item.label);
@@ -241,9 +254,16 @@ async function autocompleteTags(interaction, current) {
           value: (prefix + tag).substring(0, 100)
         };
       });
+    
+    console.log(`✅ Retornando ${formatted.length} opciones formateadas`);
+    console.log('📤 Primera opción:', JSON.stringify(formatted[0]));
+    console.log('==================\n');
+    
+    return formatted;
       
   } catch (error) {
-    console.error('Error en autocomplete:', error.message);
+    console.error('❌ [AUTOCOMPLETE] Error:', error.message);
+    console.error(error.stack);
     return [];
   }
 }
@@ -252,25 +272,64 @@ async function fetchSuggestionsWithRetry(tag) {
   try {
     const url = `https://ac.rule34.xxx/autocomplete.php?q=${encodeURIComponent(tag)}`;
     
+    console.log('🌐 [API] Llamando URL:', url);
+    console.log('⏱️  [API] Timeout: 5000ms');
+    
     const response = await fetch(url, {
+      method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json'
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/javascript, */*; q=0.01',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Referer': 'https://rule34.xxx/',
+        'Origin': 'https://rule34.xxx',
+        'Connection': 'keep-alive',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-site',
+        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Linux"'
       },
-      signal: AbortSignal.timeout(3000)
+      signal: AbortSignal.timeout(5000)
     });
     
-    if (response.ok) {
-      const data = await response.json();
-      if (Array.isArray(data) && data.length > 0 && data[0] !== "error") {
-        return data;
-      }
+    console.log('📡 [API] Status:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      console.log('❌ [API] Response not OK - Status:', response.status);
+      throw new Error(`HTTP ${response.status}`);
     }
+    
+    const contentType = response.headers.get('content-type') || '';
+    console.log('📄 [API] Content-Type:', contentType);
+    
+    const rawText = await response.text();
+    console.log('📝 [API] Raw response length:', rawText.length);
+    console.log('📝 [API] Raw response (primeros 200 chars):', rawText.substring(0, 200));
+    
+    // Intentar parsear JSON
+    const data = JSON.parse(rawText);
+    console.log('✅ [API] JSON parseado correctamente');
+    console.log('📊 [API] Tipo:', Array.isArray(data) ? 'Array' : typeof data);
+    console.log('📊 [API] Items:', Array.isArray(data) ? data.length : 'N/A');
+    
+    if (Array.isArray(data) && data.length > 0 && data[0] !== "error") {
+      console.log('📦 [API] Muestra:', JSON.stringify(data.slice(0, 2), null, 2));
+      console.log('✅ [API] Retornando datos válidos');
+      return data;
+    }
+    
+    console.log('⚠️  [API] Array vacío o contiene error');
+    throw new Error('Empty or invalid response');
+    
   } catch (error) {
-    console.log(`Autocomplete falló: ${error.message}`);
+    console.error(`❌ [API] Error:`, error.message);
+    console.error(`📚 [API] Type:`, error.name);
+    console.log('🔄 [FALLBACK] Usando tags populares');
+    return getPopularTagsSuggestions(tag);
   }
-  
-  return getPopularTagsSuggestions(tag);
 }
 
 function getPopularTagsSuggestions(input) {
@@ -281,13 +340,24 @@ function getPopularTagsSuggestions(input) {
     'cum', 'creampie', 'facial', 'handjob', 'blowjob',
     'lesbian', 'yuri', 'yaoi', 'futanari', 'trap',
     'milf', 'teen', 'young', 'old', 'mature',
-    'furry', 'anthro', 'feral', 'pokemon', 'digimon'
+    'furry', 'anthro', 'feral', 'pokemon', 'digimon',
+    'solo', 'duo', 'group', 'male', 'female',
+    'penetration', 'sex', 'nude', 'breasts', 'nipples',
+    'tongue', 'saliva', 'sweat', 'bdsm', 'bondage',
+    'tentacles', 'monster', 'demon', 'dragon', 'elf',
+    'pregnancy', 'lactation', 'inflation', 'vore', 'macro',
+    'swimsuit', 'lingerie', 'stockings', 'panties', 'bra',
+    'glasses', 'horns', 'tail', 'wings', 'animal_ears'
   ];
   
   const lowerInput = input.toLowerCase();
-  return popularTags
-    .filter(tag => tag.includes(lowerInput))
+  const matches = popularTags
+    .filter(tag => tag.includes(lowerInput) || lowerInput.includes(tag))
     .map(tag => ({ value: tag, label: tag }));
+  
+  console.log(`🏷️  [FALLBACK] ${matches.length} tags populares para "${input}"`);
+  
+  return matches;
 }
 
 // UI HELPERS

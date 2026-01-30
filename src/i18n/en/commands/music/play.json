@@ -1,7 +1,8 @@
 {
   "command": {
     "name": "play",
-    "description": "Play a song or playlist"
+    "description": "Play a song or playlist",
+    "aliases": ["reproducir", "song", "music"]
   },
   "options": {
     "query": {

@@ -1,6 +1,7 @@
 {
   "name": "imagen",
   "description": "Buscar imágenes NSFW en Rule34",
+  "aliases": ["image", "img", "nsfwimg"]
   "options": {
     "tags": {
       "description": "Etiquetas de búsqueda (separadas por comas)"

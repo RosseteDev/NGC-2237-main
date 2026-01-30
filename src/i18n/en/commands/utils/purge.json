@@ -1,6 +1,7 @@
 {
   "name": "purga",
   "description": "Borra mensajes de un usuario",
+  "aliases": ["purge", "clean", "delete"],
   "options": {
     "user": {
       "type": "user",

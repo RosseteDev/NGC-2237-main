@@ -4,8 +4,8 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "deploy": "node src/deploy-commands.js"
+    "start": "node src/bot/index.js",
+    "deploy": "node src/bot/deploy-commands.js"
   },
   "dependencies": {
     "better-sqlite3": "^12.5.0",
