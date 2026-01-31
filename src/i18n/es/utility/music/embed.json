@@ -1,9 +1,11 @@
 {
-  "now_playing_title": "Reproduciendo ahora",
-  "author": "Autor",
-  "duration": "Duración",
-  "unknown": "Desconocido",
-  "live": "En vivo",
-  "added_title": "Añadido a la cola",
-  "position": "Posición"
+  "embed": {
+    "now_playing_title": "🎵 Reproduciendo Ahora",
+    "added": "✅ Añadido a la Cola",
+    "author": "Artista",
+    "duration": "Duración",
+    "position": "Posición",
+    "unknown": "Desconocido",
+    "live": "🔴 EN VIVO"
+  }
 }

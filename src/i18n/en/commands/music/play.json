@@ -30,5 +30,14 @@
     "track_error": "⚠️ Error playing: **{title}**",
     "connection_closed": "⚠️ **Playback stopped: connection closed.**\n\nTo play music again:\n• Use `q!p <song>` when Discord has fully disconnected me\n• Or use `/disconnect` first if there are issues",
     "general_error": "❌ An error occurred while processing your request"
+  },
+  "embed": {
+    "now_playing_title": "🎵 Now Playing",
+    "added_title": "✅ Added to Queue",
+    "author": "Artist",
+    "duration": "Duration",
+    "position": "Position",
+    "unknown": "Unknown",
+    "live": "🔴 LIVE"
   }
 }

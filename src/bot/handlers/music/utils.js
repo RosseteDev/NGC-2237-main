@@ -43,18 +43,18 @@ export function formatDuration(ms) {
 export function createNowPlayingEmbed(track, t) {
   const embed = new EmbedBuilder()
     .setColor(0x1DB954)
-    .setTitle(t("utility.music.embed.now_playing_title")) // ✅ Cambiado
+    .setTitle(t("now_playing_title")) // ✅ Correcto
     .setDescription(`**[${track.info.title}](${track.info.uri})**`)
     .addFields(
       {
-        name: t("utility.music.embed.author"), // ✅ Cambiado
-        value: track.info.author || t("utility.music.embed.unknown"), // ✅ Cambiado
+        name: t("author"), // ✅ Correcto
+        value: track.info.author || t("embed.unknown"),
         inline: true
       },
       {
-        name: t("utility.music.embed.duration"), // ✅ Cambiado
+        name: t("duration"), // ✅ Correcto
         value: track.info.isStream 
-          ? t("utility.music.embed.live") // ✅ Cambiado
+          ? t("live")
           : formatDuration(track.info.length),
         inline: true
       }
@@ -74,18 +74,18 @@ export function createNowPlayingEmbed(track, t) {
 export function createQueuedEmbed(track, position, t) {
   const embed = new EmbedBuilder()
     .setColor(0x5865F2)
-    .setTitle(t("utility.music.embed.added_title")) // ✅ Cambiado
+    .setTitle(t("music.embed.added_title")) // ✅ Cambiado
     .setDescription(`**[${track.info.title}](${track.info.uri})**`)
     .addFields(
       {
-        name: t("utility.music.embed.author"), // ✅ Cambiado
+        name: t("author"), // ✅ Cambiado
         value: track.info.author || t("utility.music.embed.unknown"), // ✅ Cambiado
         inline: true
       },
       {
-        name: t("utility.music.embed.duration"), // ✅ Cambiado
+        name: t("duration"), // ✅ Cambiado
         value: track.info.isStream 
-          ? t("utility.music.embed.live") // ✅ Cambiado
+          ? t("live") // ✅ Cambiado
           : formatDuration(track.info.length),
         inline: true
       },
