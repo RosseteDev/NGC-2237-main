@@ -41,8 +41,14 @@ export async function execute(context) {
     return context.reply({ embeds: [embed] });
   }
 
-  // Cambiar prefix - verificar permisos
-  if (!context.member?.permissions.has("ManageGuild")) {
+  // Cambiar prefix - verificar contexto y permisos
+  if (!context.guild || !context.member || !context.member.permissions || typeof context.member.permissions.has !== "function") {
+    return context.reply({
+      content: t("guild_only_command"),
+      ephemeral: true
+    });
+  }
+  if (!context.member.permissions.has("ManageGuild")) {
     return context.reply({
       content: t("no_permission"),
       ephemeral: true

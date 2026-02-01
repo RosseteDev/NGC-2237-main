@@ -18,11 +18,11 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers
   ]
 });
 
-// ✅ IMPORTANTE: Agregar db al cliente
 client.db = db;
 
 client.commands = new Collection();
@@ -48,8 +48,10 @@ try {
 }
 
 // Event handlers
+
 import("./events/ready.js").then(m => m.default(client));
 import("./events/interactionCreate.js").then(m => m.default(client));
+import("./events/members/guildnewmember.js").then(m => m.default(client));
 
 // Prefix commands
 client.on("messageCreate", async (message) => {

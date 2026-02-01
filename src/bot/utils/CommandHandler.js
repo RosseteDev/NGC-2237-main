@@ -1,7 +1,7 @@
 // src/utils/CommandHandler.js
 
 import Context from "./Context.js";
-import { db } from "../database/manager.js";
+import { db } from "../database/ResilientDatabaseManager.js";
 import logger, { createLogger } from "./Logger.js";
 
 const handlerLogger = createLogger("handler");

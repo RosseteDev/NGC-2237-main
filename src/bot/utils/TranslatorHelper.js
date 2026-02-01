@@ -1,7 +1,7 @@
 // src/utils/TranslatorHelper.js
 // ============================================
-// SISTEMA DE TRADUCCIÓN MODULAR V2
-// Soporta estructura de archivos separados
+// SISTEMA DE TRADUCCIÓN MODULAR V2 - DEBUG EDITION
+// Con logging detallado para diagnosticar problemas
 // ============================================
 
 import { readFile } from 'fs/promises';
@@ -17,12 +17,21 @@ const logger = createLogger('translator');
 // CONFIGURACIÓN
 // ========================================
 
-const I18N_PATH = join(__dirname, '..', 'i18n');
+const I18N_PATH = join(__dirname, '..', '..', 'i18n'); // src/bot/utils -> src/i18n
 const DEFAULT_LOCALE = 'en';
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutos
 
 // Cache de archivos cargados
 const fileCache = new Map();
+
+// ✅ NUEVO: Estadísticas de carga
+const loadStats = {
+  filesLoaded: 0,
+  filesFailed: 0,
+  translationsLoaded: 0,
+  cacheHits: 0,
+  cacheMisses: 0
+};
 
 // ========================================
 // CARGA DE ARCHIVOS JSON
@@ -37,16 +46,41 @@ const fileCache = new Map();
 async function loadJSON(relativePath, locale) {
   const cacheKey = `${locale}:${relativePath}`;
   
+  logger.debug(`┌─ loadJSON: ${cacheKey}`);
+  
   // Verificar cache
   const cached = fileCache.get(cacheKey);
   if (cached && Date.now() < cached.expires) {
+    loadStats.cacheHits++;
+    const translationCount = countTranslations(cached.data);
+    logger.debug(`├─ ✅ CACHE HIT (${translationCount} traducciones)`);
+    logger.debug(`└─ Expira en: ${Math.floor((cached.expires - Date.now()) / 1000)}s`);
     return cached.data;
   }
   
+  loadStats.cacheMisses++;
+  
   try {
     const fullPath = join(I18N_PATH, locale, relativePath);
+    logger.debug(`├─ 📂 Buscando en: ${fullPath}`);
+    logger.debug(`├─ 📂 I18N_PATH base: ${I18N_PATH}`);
+    logger.debug(`├─ 📂 __dirname es: ${__dirname}`);
+    
     const content = await readFile(fullPath, 'utf-8');
+    logger.debug(`├─ 📝 Archivo leído: ${content.length} bytes`);
+    
+    // Mostrar primeros 200 caracteres del contenido
+    logger.debug(`├─ 📄 Preview: ${content.substring(0, 200)}...`);
+    
     const data = JSON.parse(content);
+    const translationCount = countTranslations(data);
+    
+    logger.debug(`├─ ✅ JSON parseado exitosamente`);
+    logger.debug(`├─ 📊 Estructura raíz: ${JSON.stringify(Object.keys(data))}`);
+    logger.debug(`├─ 🔢 Total de traducciones: ${translationCount}`);
+    
+    // Mostrar estructura detallada
+    logStructure(data, '│  ');
     
     // Cachear resultado
     fileCache.set(cacheKey, {
@@ -54,17 +88,44 @@ async function loadJSON(relativePath, locale) {
       expires: Date.now() + CACHE_TTL
     });
     
-    logger.debug(`Cargado: ${locale}/${relativePath}`);
+    loadStats.filesLoaded++;
+    loadStats.translationsLoaded += translationCount;
+    
+    logger.info(`└─ 💾 ${locale}/${relativePath} → ${translationCount} traducciones cacheadas`);
     return data;
     
   } catch (error) {
     if (error.code === 'ENOENT') {
-      logger.debug(`No existe: ${locale}/${relativePath}`);
+      logger.warn(`├─ ❌ Archivo no existe`);
+      logger.debug(`└─ Buscado en: ${join(I18N_PATH, locale, relativePath)}`);
+      loadStats.filesFailed++;
       return {};
     }
     
-    logger.error(`Error cargando ${locale}/${relativePath}:`, error.message);
+    loadStats.filesFailed++;
+    logger.error(`├─ 💥 Error: ${error.message}`);
+    logger.error(`├─ Stack: ${error.stack?.split('\n')[0]}`);
+    logger.error(`└─ Code: ${error.code}`);
     return {};
+  }
+}
+
+/**
+ * ✅ NUEVO: Mostrar estructura jerárquica del objeto
+ */
+function logStructure(obj, indent = '', maxDepth = 3, currentDepth = 0) {
+  if (currentDepth >= maxDepth || !obj || typeof obj !== 'object') return;
+  
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string') {
+      logger.debug(`${indent}├─ "${key}": "${value.substring(0, 50)}${value.length > 50 ? '...' : ''}"`);
+    } else if (typeof value === 'object' && value !== null) {
+      const childCount = Object.keys(value).length;
+      logger.debug(`${indent}├─ "${key}": {${childCount} keys}`);
+      logStructure(value, indent + '│  ', maxDepth, currentDepth + 1);
+    } else {
+      logger.debug(`${indent}├─ "${key}": ${typeof value}`);
+    }
   }
 }
 
@@ -75,16 +136,24 @@ async function loadJSON(relativePath, locale) {
  * @returns {Object} Objeto fusionado
  */
 function deepMerge(target, source) {
+  logger.debug(`🔀 deepMerge: fusionando ${Object.keys(source).length} claves`);
+  
   for (const [key, value] of Object.entries(source)) {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       if (!target[key] || typeof target[key] !== 'object') {
         target[key] = {};
+        logger.debug(`  ├─ Creando objeto: "${key}"`);
+      } else {
+        logger.debug(`  ├─ Fusionando objeto: "${key}"`);
       }
       deepMerge(target[key], value);
     } else {
       target[key] = value;
+      logger.debug(`  ├─ Añadiendo: "${key}" = ${typeof value === 'string' ? `"${value.substring(0, 30)}..."` : typeof value}`);
     }
   }
+  
+  logger.debug(`  └─ Resultado: ${countTranslations(target)} traducciones totales`);
   return target;
 }
 
@@ -117,11 +186,15 @@ function countTranslations(obj, depth = 0) {
  * @returns {Promise<string>} Código de idioma
  */
 export async function detectLanguage(context) {
+  logger.debug(`🌍 detectLanguage iniciado`);
+  
   try {
     // Intentar obtener desde DB
     const { db } = await import('../database/ResilientDatabaseManager.js');
     
     if (db.available && context.guild?.id) {
+      logger.debug(`├─ DB disponible, consultando guild ${context.guild.id}`);
+      
       try {
         const lang = await Promise.race([
           db.getGuildLang(context.guild.id),
@@ -130,14 +203,18 @@ export async function detectLanguage(context) {
           )
         ]);
         
-        logger.debug(`Idioma desde DB: ${lang}`);
+        logger.info(`└─ ✅ Idioma desde DB: "${lang}"`);
         return lang;
       } catch (error) {
-        logger.debug(`DB timeout, usando locale: ${error.message}`);
+        logger.debug(`├─ ⚠️ DB timeout: ${error.message}`);
+        logger.debug(`└─ Fallback a locale de Discord`);
       }
+    } else {
+      logger.debug(`├─ DB no disponible o sin guild`);
+      logger.debug(`└─ Usando locale de Discord`);
     }
   } catch (error) {
-    logger.debug('DB no disponible, usando locale');
+    logger.debug(`└─ Error importando DB: ${error.message}`);
   }
   
   // Fallback: locale de Discord
@@ -152,22 +229,31 @@ export async function detectLanguage(context) {
 function detectLanguageFromLocale(context) {
   const locale = context.locale || context.guild?.preferredLocale;
   
+  logger.debug(`🗣️ detectLanguageFromLocale`);
+  logger.debug(`├─ context.locale: "${context.locale}"`);
+  logger.debug(`├─ guild.preferredLocale: "${context.guild?.preferredLocale}"`);
+  logger.debug(`├─ Locale detectado: "${locale}"`);
+  
   if (!locale) {
+    logger.info(`└─ ⚠️ Sin locale, usando default: "${DEFAULT_LOCALE}"`);
     return DEFAULT_LOCALE;
   }
   
   // Mapeo simple
-  if (locale.startsWith('es')) return 'es';
-  if (locale.startsWith('pt')) return 'pt';
-  if (locale.startsWith('fr')) return 'fr';
-  if (locale.startsWith('de')) return 'de';
-  if (locale.startsWith('it')) return 'it';
-  if (locale.startsWith('ja')) return 'ja';
-  if (locale.startsWith('ko')) return 'ko';
-  if (locale.startsWith('zh')) return 'zh';
-  if (locale.startsWith('ru')) return 'ru';
+  let detected = DEFAULT_LOCALE;
   
-  return DEFAULT_LOCALE;
+  if (locale.startsWith('es')) detected = 'es';
+  else if (locale.startsWith('pt')) detected = 'pt';
+  else if (locale.startsWith('fr')) detected = 'fr';
+  else if (locale.startsWith('de')) detected = 'de';
+  else if (locale.startsWith('it')) detected = 'it';
+  else if (locale.startsWith('ja')) detected = 'ja';
+  else if (locale.startsWith('ko')) detected = 'ko';
+  else if (locale.startsWith('zh')) detected = 'zh';
+  else if (locale.startsWith('ru')) detected = 'ru';
+  
+  logger.info(`└─ ✅ Idioma detectado: "${detected}"`);
+  return detected;
 }
 
 // ========================================
@@ -183,7 +269,12 @@ function detectLanguageFromLocale(context) {
 export async function createTranslator(commandData, context) {
   const locale = await detectLanguage(context);
   
-  logger.info(`Creando traductor: ${commandData.category}/${commandData.name} (${locale})`);
+  logger.info(`\n${'='.repeat(60)}`);
+  logger.info(`🔧 CREANDO TRADUCTOR`);
+  logger.info(`${'='.repeat(60)}`);
+  logger.info(`├─ Comando: ${commandData.category}/${commandData.name}`);
+  logger.info(`├─ Locale: ${locale}`);
+  logger.info(`└─ Usuario: ${context.user?.tag || 'Unknown'}`);
   
   const translations = {};
   
@@ -191,36 +282,72 @@ export async function createTranslator(commandData, context) {
   // ESTRATEGIA DE CARGA (ORDEN DE PRIORIDAD)
   // ========================================
   
+  logger.info(`\n📦 FASE 1: CARGANDO ARCHIVOS COMUNES`);
+  logger.info(`${'─'.repeat(60)}`);
+  
   // 1. Common (errores globales, permisos, validación)
-  logger.debug('Cargando common...');
   const commonFiles = ['errors.json', 'permissions.json', 'validation.json'];
   for (const file of commonFiles) {
     const data = await loadJSON(`common/${file}`, locale);
-    deepMerge(translations, data);
+    if (Object.keys(data).length > 0) {
+      deepMerge(translations, data);
+    } else {
+      logger.warn(`⚠️ common/${file} está vacío o no existe`);
+    }
   }
   
+  logger.info(`\n📦 FASE 2: CARGANDO UTILITY`);
+  logger.info(`${'─'.repeat(60)}`);
+  
   // 2. Utility (helpers compartidos como embeds)
-  logger.debug('Cargando utility...');
   const utilityPaths = [
     'utility/music/embed.json',
-    // Agregar más paths según necesites
   ];
   for (const path of utilityPaths) {
     const data = await loadJSON(path, locale);
-    deepMerge(translations, data);
+    if (Object.keys(data).length > 0) {
+      deepMerge(translations, data);
+    } else {
+      logger.debug(`⚠️ ${path} está vacío o no existe`);
+    }
   }
+  
+  logger.info(`\n📦 FASE 3: CARGANDO COMANDO ESPECÍFICO`);
+  logger.info(`${'─'.repeat(60)}`);
   
   // 3. Comando específico (mayor prioridad)
   if (commandData.category && commandData.name) {
-    logger.debug(`Cargando comando: ${commandData.category}/${commandData.name}`);
-    
     const commandPath = `commands/${commandData.category}/${commandData.name}.json`;
+    logger.debug(`Buscando: ${commandPath}`);
+    
     const commandData_i18n = await loadJSON(commandPath, locale);
-    deepMerge(translations, commandData_i18n);
+    if (Object.keys(commandData_i18n).length > 0) {
+      deepMerge(translations, commandData_i18n);
+    } else {
+      logger.warn(`⚠️ ${commandPath} está vacío o no existe`);
+    }
   }
   
   const totalKeys = countTranslations(translations);
-  logger.info(`Total de traducciones cargadas: ${totalKeys}`);
+  
+  logger.info(`\n📊 RESUMEN DE CARGA`);
+  logger.info(`${'─'.repeat(60)}`);
+  logger.info(`├─ Total de traducciones: ${totalKeys}`);
+  logger.info(`├─ Archivos cargados: ${loadStats.filesLoaded}`);
+  logger.info(`├─ Archivos fallidos: ${loadStats.filesFailed}`);
+  logger.info(`├─ Cache hits: ${loadStats.cacheHits}`);
+  logger.info(`├─ Cache misses: ${loadStats.cacheMisses}`);
+  logger.info(`└─ Estructura final: ${JSON.stringify(Object.keys(translations))}`);
+  
+  // Mostrar primeras 10 claves
+  logger.info(`\n🔑 PRIMERAS CLAVES DISPONIBLES:`);
+  const allKeys = getAllKeys(translations);
+  allKeys.slice(0, 10).forEach((key, i) => {
+    logger.info(`  ${i + 1}. "${key}"`);
+  });
+  if (allKeys.length > 10) {
+    logger.info(`  ... y ${allKeys.length - 10} más`);
+  }
   
   // ========================================
   // FALLBACK A INGLÉS
@@ -229,7 +356,8 @@ export async function createTranslator(commandData, context) {
   let fallbackTranslations = {};
   
   if (locale !== DEFAULT_LOCALE) {
-    logger.debug('Cargando fallback (inglés)...');
+    logger.info(`\n📦 CARGANDO FALLBACK (${DEFAULT_LOCALE})`);
+    logger.info(`${'─'.repeat(60)}`);
     
     // Cargar las mismas rutas en inglés
     for (const file of commonFiles) {
@@ -247,6 +375,9 @@ export async function createTranslator(commandData, context) {
       const data = await loadJSON(commandPath, DEFAULT_LOCALE);
       deepMerge(fallbackTranslations, data);
     }
+    
+    const fallbackCount = countTranslations(fallbackTranslations);
+    logger.info(`└─ Fallback cargado: ${fallbackCount} traducciones`);
   }
   
   // ========================================
@@ -260,34 +391,60 @@ export async function createTranslator(commandData, context) {
    * @returns {string} Texto traducido
    */
   function t(key, vars = {}) {
+    logger.debug(`🔍 t("${key}") llamado`);
+    
     // Buscar traducción
     let text = findNestedKey(translations, key);
     
-    // Fallback a inglés
-    if (!text && Object.keys(fallbackTranslations).length > 0) {
-      text = findNestedKey(fallbackTranslations, key);
-      if (text) {
-        logger.warn(`Usando fallback para: ${key} (locale: ${locale})`);
+    if (text) {
+      logger.debug(`  ├─ ✅ Encontrado en locale principal: "${text.substring(0, 50)}..."`);
+    } else {
+      logger.debug(`  ├─ ❌ No encontrado en locale principal`);
+      
+      // Fallback a inglés
+      if (Object.keys(fallbackTranslations).length > 0) {
+        text = findNestedKey(fallbackTranslations, key);
+        if (text) {
+          logger.warn(`  ├─ ⚠️ Usando fallback (${DEFAULT_LOCALE}): "${text.substring(0, 50)}..."`);
+        }
       }
     }
     
     // Si no existe, retornar clave con marcador
     if (!text) {
-      logger.error(`Traducción faltante: ${key} (locale: ${locale})`);
+      logger.error(`  └─ 💥 Traducción faltante: ${key} (locale: ${locale})`);
+      logger.error(`     Claves disponibles similares:`);
+      
+      // Buscar claves similares
+      const allKeys = getAllKeys(translations);
+      const similar = allKeys.filter(k => 
+        k.includes(key) || key.includes(k) || levenshteinDistance(k, key) < 3
+      ).slice(0, 5);
+      
+      similar.forEach(k => {
+        logger.error(`       - "${k}"`);
+      });
+      
       return `[Missing: ${key}]`;
     }
     
     // Interpolación de variables
+    let result = text;
     for (const [k, v] of Object.entries(vars)) {
-      text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+      result = result.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+      logger.debug(`  ├─ Interpolando: {${k}} → "${String(v)}"`);
     }
     
-    return text;
+    logger.debug(`  └─ ✅ Retornando: "${result.substring(0, 50)}..."`);
+    return result;
   }
   
   // Metadata
   t.locale = locale;
   t.commandData = commandData;
+  
+  logger.info(`\n✅ TRADUCTOR CREADO EXITOSAMENTE`);
+  logger.info(`${'='.repeat(60)}\n`);
   
   return t;
 }
@@ -300,34 +457,103 @@ export async function createTranslator(commandData, context) {
  * @returns {string|null} Valor encontrado o null
  */
 function findNestedKey(obj, key) {
+  logger.debug(`    🔎 findNestedKey("${key}")`);
+  
   // 1. Búsqueda directa
   if (obj[key] && typeof obj[key] === 'string') {
+    logger.debug(`      ✅ Encontrado en nivel raíz`);
     return obj[key];
   }
   
   // 2. Búsqueda con dot notation
   if (key.includes('.')) {
     const parts = key.split('.');
+    logger.debug(`      Buscando path: ${parts.join(' → ')}`);
+    
     let current = obj;
     
     for (const part of parts) {
+      logger.debug(`        ├─ Navegando a: "${part}"`);
       current = current?.[part];
-      if (current === undefined) return null;
+      if (current === undefined) {
+        logger.debug(`        └─ ❌ No encontrado en "${part}"`);
+        return null;
+      }
     }
     
-    return typeof current === 'string' ? current : null;
+    if (typeof current === 'string') {
+      logger.debug(`      ✅ Encontrado vía dot notation`);
+      return current;
+    }
+    
+    logger.debug(`      ❌ Resultado no es string: ${typeof current}`);
+    return null;
   }
   
   // 3. Búsqueda en primer nivel de anidación (para compatibilidad)
+  logger.debug(`      Buscando en primer nivel de anidación...`);
   for (const topKey of Object.keys(obj)) {
     if (typeof obj[topKey] === 'object' && obj[topKey] !== null) {
       if (obj[topKey][key] && typeof obj[topKey][key] === 'string') {
+        logger.debug(`      ✅ Encontrado en: "${topKey}.${key}"`);
         return obj[topKey][key];
       }
     }
   }
   
+  logger.debug(`      ❌ No encontrado en ningún nivel`);
   return null;
+}
+
+/**
+ * ✅ NUEVO: Obtener todas las claves disponibles (recursivamente)
+ */
+function getAllKeys(obj, prefix = '', keys = []) {
+  for (const [key, value] of Object.entries(obj)) {
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+    
+    if (typeof value === 'string') {
+      keys.push(fullKey);
+    } else if (typeof value === 'object' && value !== null) {
+      getAllKeys(value, fullKey, keys);
+    }
+  }
+  
+  return keys;
+}
+
+/**
+ * ✅ NUEVO: Distancia de Levenshtein (para sugerencias)
+ */
+function levenshteinDistance(a, b) {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  
+  const matrix = [];
+  
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+  
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  
+  return matrix[b.length][a.length];
 }
 
 // ========================================
@@ -339,7 +565,14 @@ function findNestedKey(obj, key) {
  */
 export function clearTranslationCache() {
   fileCache.clear();
-  logger.info('Cache de traducciones limpiado');
+  logger.info('🧹 Cache de traducciones limpiado');
+  
+  // Resetear stats
+  loadStats.filesLoaded = 0;
+  loadStats.filesFailed = 0;
+  loadStats.translationsLoaded = 0;
+  loadStats.cacheHits = 0;
+  loadStats.cacheMisses = 0;
 }
 
 /**
@@ -349,7 +582,8 @@ export function clearTranslationCache() {
 export function getCacheStats() {
   return {
     size: fileCache.size,
-    keys: Array.from(fileCache.keys())
+    keys: Array.from(fileCache.keys()),
+    stats: { ...loadStats }
   };
 }
 
@@ -359,6 +593,8 @@ export function getCacheStats() {
  * @returns {Promise<Function>} Función de traducción
  */
 export async function createSimpleTranslator(locale = DEFAULT_LOCALE) {
+  logger.info(`🔧 Creando traductor simple (locale: ${locale})`);
+  
   const translations = {};
   
   // Cargar solo archivos comunes

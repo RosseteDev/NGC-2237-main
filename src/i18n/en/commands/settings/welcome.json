@@ -1,0 +1,4 @@
+{
+  "set": "Welcome channel set to {channel}.",
+  "error_no_channel": "❌ You must select a valid channel."
+}

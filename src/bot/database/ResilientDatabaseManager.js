@@ -1,3 +1,4 @@
+  // (Removed duplicate top-level methods. These should be inside the LocalBackupDB class. See below.)
 // src/database/ResilientDatabaseManager.js
 // ============================================
 // SISTEMA DE BASE DE DATOS RESILIENTE
@@ -108,6 +109,7 @@ class LocalBackupDB {
         guild_id TEXT PRIMARY KEY,
         lang TEXT DEFAULT 'en',
         prefix TEXT DEFAULT 'r!',
+        welcome_channel_id TEXT DEFAULT NULL,
         updated_at INTEGER DEFAULT (strftime('%s', 'now'))
       );
 
@@ -152,6 +154,13 @@ class LocalBackupDB {
       // Guild Settings
       getGuildLang: this.db.prepare('SELECT lang FROM guild_settings WHERE guild_id = ?'),
       getGuildPrefix: this.db.prepare('SELECT prefix FROM guild_settings WHERE guild_id = ?'),
+      getWelcomeChannel: this.db.prepare('SELECT welcome_channel_id FROM guild_settings WHERE guild_id = ?'),
+      setWelcomeChannel: this.db.prepare(`
+        INSERT INTO guild_settings (guild_id, welcome_channel_id, updated_at)
+        VALUES (?, ?, strftime('%s', 'now'))
+        ON CONFLICT(guild_id)
+        DO UPDATE SET welcome_channel_id = excluded.welcome_channel_id, updated_at = excluded.updated_at
+      `),
       setGuildLang: this.db.prepare(`
         INSERT INTO guild_settings (guild_id, lang, updated_at) 
         VALUES (?, ?, strftime('%s', 'now'))
@@ -236,6 +245,11 @@ class LocalBackupDB {
   // MÉTODOS DE LECTURA
   // ========================================
 
+  getWelcomeChannel(guildId) {
+    const result = this.stmts.getWelcomeChannel.get(guildId);
+    return result ? result.welcome_channel_id : null;
+  }
+
   getGuildLang(guildId) {
     const result = this.stmts.getGuildLang.get(guildId);
     return result?.lang || 'en';
@@ -269,6 +283,16 @@ class LocalBackupDB {
   // ========================================
   // MÉTODOS DE ESCRITURA (CON QUEUE)
   // ========================================
+
+  setWelcomeChannel(guildId, channelId, addToQueue = true) {
+    this.stmts.setWelcomeChannel.run(guildId, channelId);
+    if (addToQueue && this.addToSyncQueue) {
+      this.addToSyncQueue('guild_settings', 'UPDATE', {
+        guild_id: guildId,
+        welcome_channel_id: channelId
+      });
+    }
+  }
 
   setGuildLang(guildId, lang, addToQueue = true) {
     this.stmts.setGuildLang.run(guildId, lang);
@@ -519,6 +543,25 @@ class CachedPostgresDB {
 // 4. RESILIENT DATABASE MANAGER (NÚCLEO)
 // ============================================
 class ResilientDatabaseManager {
+      async getWelcomeChannel(guildId) {
+        // Si en el futuro hay soporte en Postgres, aquí se puede agregar
+        return this.local.getWelcomeChannel(guildId);
+      }
+    async setWelcomeChannel(guildId, channelId) {
+      // Escribir SIEMPRE a SQLite primero (write-through)
+      this.local.setWelcomeChannel(guildId, channelId, this.mode !== 'postgres');
+
+      // Si PostgreSQL está disponible, escribir también
+      if (this.mode === 'postgres') {
+        try {
+          // Si tienes método en pg, agrégalo aquí. Si no, solo sincroniza desde SQLite.
+          // await this._withTimeout(() => this.pg.setWelcomeChannel(guildId, channelId), 1000);
+          // Si no existe en pg, la sync se hará por el worker.
+        } catch (error) {
+          // Ya está en queue por setWelcomeChannel del local
+        }
+      }
+    }
   constructor() {
     this.pg = new CachedPostgresDB();
     this.local = null; // Inicializado en init()

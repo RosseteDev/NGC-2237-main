@@ -5,10 +5,15 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/bot/index.js",
-    "deploy": "node src/bot/deploy-commands.js"
+    "deploy": "node src/bot/deploy-commands.js",
+    "test:welcome": "node test/welcome-image-tester.js",
+    "test:welcome:local": "node test/welcome-image-tester.js local",
+    "test:welcome:discord": "node test/welcome-image-tester.js discord",
+    "test:welcome:interactive": "node test/welcome-image-tester.js interactive"
   },
   "dependencies": {
     "better-sqlite3": "^12.5.0",
+    "canvas": "^3.2.1",
     "discord.js": "^14.25.1",
     "dotenv": "^17.2.3",
     "pg": "^8.16.3",
