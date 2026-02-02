@@ -1,7 +1,7 @@
 // src/utils/Context.js
 
 import EmbedFactory from "./EmbedFactory.js";
-import { useLang } from "../localization/useLang.js";
+import { useLang } from "../localization/TranslatorHelper.js";
 
 /**
  * Context - Wrapper unificado para Interactions y Messages

@@ -5,7 +5,7 @@
 // ============================================
 
 import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from "discord.js";
-import { getCacheStats, createTranslator, detectLanguage, clearTranslationCache } from "../utils/TranslatorHelper.js";
+import { getCacheStats, createTranslator, detectLanguage, clearTranslationCache } from "../localization/TranslatorHelper.js";
 import { readdir, readFile } from "fs/promises";
 import { join } from "path";
 import { createLogger } from "../utils/Logger.js";

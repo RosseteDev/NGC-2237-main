@@ -1,3 +1,4 @@
 {
-  "message": "Hello {user}, welcome to {server}"
+  "title": "Welcome!",
+  "message": "Welcome to {server}, {user}! We hope you enjoy your stay."
 }

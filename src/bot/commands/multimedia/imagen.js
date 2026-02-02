@@ -7,7 +7,7 @@ import {
   ComponentType,
   AttachmentBuilder
 } from "discord.js";
-import { useLang } from "../../localization/useLang.js";
+import { useLang } from "../../localization/TranslatorHelper.js";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";

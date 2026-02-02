@@ -2,7 +2,7 @@
 
 import { EmbedBuilder } from "discord.js";
 import { buildCommand } from "../../utils/commandbuilder.js";
-import { createTranslator } from "../../utils/TranslatorHelper.js";
+import { createTranslator } from "../../localization/TranslatorHelper.js";
 import { db } from "../../database/ResilientDatabaseManager.js";
 
 const DEFAULT_PREFIX = "r!";

@@ -1,5 +1,7 @@
+// src/bot/events/members/guildnewmember.js
+
 import { Events, AttachmentBuilder } from "discord.js";
-import { detectLanguage, createTranslator } from "../../utils/TranslatorHelper.js";
+import { detectLanguage, createTranslator } from "../../localization/TranslatorHelper.js";
 import { generateWelcomeImage } from "../../utils/welcomeImage.js";
 import { createLogger } from "../../utils/Logger.js";
 
@@ -11,7 +13,6 @@ export default client => {
       const db = client.db;
       const guildId = member.guild.id;
 
-      // Resolve welcome channel from DB
       let channelId = db.getWelcomeChannel(guildId);
       if (channelId instanceof Promise) channelId = await channelId;
 
@@ -26,8 +27,6 @@ export default client => {
         return;
       }
 
-      // Build a minimal context so detectLanguage + createTranslator work
-      // detectLanguage only needs: { guild: { id }, locale }
       const eventContext = {
         guild: member.guild,
         locale: member.guild.preferredLocale || "en-US",
@@ -36,23 +35,25 @@ export default client => {
 
       const locale = await detectLanguage(eventContext);
 
-      // createTranslator loads: common/*.json + commands/{category}/{name}.json
-      // Welcome message lives at commands/utils/welcome.json
       const t = await createTranslator(
         { category: "utils", name: "welcome" },
         eventContext
       );
+
+      const title = t("title");
 
       const welcomeMsg = t("message", {
         user: member.user.username,
         server: member.guild.name
       });
 
-      // Generate welcome image
+      logger.debug(`Welcome message (${locale}): title="${title}", msg="${welcomeMsg}"`);
+
       const imageBuffer = await generateWelcomeImage(
         member.user.username,
         member.user.displayAvatarURL({ extension: "png", size: 256 }),
-        welcomeMsg
+        welcomeMsg,  
+        title        
       );
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: "welcome.png" });
@@ -62,7 +63,7 @@ export default client => {
         files: [attachment]
       });
 
-      logger.info(`Welcome image sent to ${welcomeChannel.name} for ${member.user.tag}`);
+      logger.info(`Welcome image sent to ${welcomeChannel.name} for ${member.user.tag} (locale: ${locale})`);
 
     } catch (err) {
       logger.error("GuildMemberAdd handler failed", err);

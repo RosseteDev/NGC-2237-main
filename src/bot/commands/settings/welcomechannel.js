@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js";
-import { createTranslator } from "../../utils/TranslatorHelper.js";
+import { createTranslator } from "../../localization/TranslatorHelper.js";
 
 export const data = new SlashCommandBuilder()
   .setName("setwelcome")

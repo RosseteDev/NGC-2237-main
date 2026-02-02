@@ -1,3 +1,4 @@
 {
-  "message": "¡Hola {user}, bienvenido/a a **{server}**! Esperamos que disfrutes tu estancia."
+  "title": "¡Bienvenida/o!",
+  "message": "¡Bienvenida/o a {server}, {user}! Esperamos que disfrutes tu estadía."
 }

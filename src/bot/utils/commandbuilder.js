@@ -182,9 +182,21 @@ export function buildCommand(category, commandName) {
   const enCommand = enConfig.command || enConfig;
   const esCommand = esConfig?.command || esConfig;
 
+  // ✅ CRÍTICO: Usar el name del JSON de INGLÉS como base
+  // Discord registra comandos por su nombre EN INGLÉS
+  const baseName = enCommand.name || commandName;
+
   const command = new SlashCommandBuilder()
-    .setName(commandName)
+    .setName(baseName)  // ← Nombre base en inglés
     .setDescription(enCommand.description);
+
+  // ✅ NUEVO: Localización del NOMBRE del comando
+  if (esCommand?.name && esCommand.name !== baseName) {
+    command.setNameLocalizations({
+      "es-ES": esCommand.name,
+      "es-419": esCommand.name
+    });
+  }
 
   // Localización descripción root
   if (esCommand?.description) {
@@ -195,7 +207,6 @@ export function buildCommand(category, commandName) {
   }
 
   // 🚨 MUTUAMENTE EXCLUYENTES
-  // ✅ FIX: Buscar options en el nivel correcto
   const rootOptions = enConfig.options;
   const rootSubcommands = enConfig.subcommands;
 
@@ -227,6 +238,18 @@ export function buildCommand(category, commandName) {
   // ✅ Agregar metadata necesaria para el traductor
   command.category = category;
   command.name = commandName;
+  
+  // ✅ NUEVO: Agregar aliases si existen
+  if (enCommand.aliases) {
+    command.aliases = enCommand.aliases;
+  }
+  
+  // ✅ NUEVO: Agregar metadata si existe
+  if (enCommand.metadata) {
+    command.metadata = enCommand.metadata;
+    command.cooldown = enCommand.metadata.cooldown || 3;
+    command.permissions = enCommand.metadata.permissions;
+  }
 
   return command;
 }
@@ -275,18 +298,24 @@ function addOption(command, name, enConfig, esConfig) {
   const type = enConfig.type || "string";
   const typeValue = TypeMap[type];
   
+  // ✅ NUEVO: Usar el name del config si existe, sino usar el key
+  const optionName = enConfig.name || name;
+  
   const optionBuilder = (option) => {
     option
-      .setName(name)
+      .setName(optionName)  // ← Usar nombre del JSON
       .setDescription(enConfig.description)
       .setRequired(enConfig.required !== false);
     
     // Localizaciones
     if (esConfig) {
-      option.setNameLocalizations({
-        "es-ES": esConfig.name || name,
-        "es-419": esConfig.name || name
-      });
+      // ✅ Localizar el nombre de la opción también
+      if (esConfig.name) {
+        option.setNameLocalizations({
+          "es-ES": esConfig.name,
+          "es-419": esConfig.name
+        });
+      }
       
       option.setDescriptionLocalizations({
         "es-ES": esConfig.description,

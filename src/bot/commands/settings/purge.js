@@ -2,7 +2,7 @@
 
 import { ChannelType, PermissionFlagsBits } from "discord.js";
 import { buildCommand } from "../../utils/commandbuilder.js";
-import { createTranslator } from "../../utils/TranslatorHelper.js";
+import { createTranslator } from "../../localization/TranslatorHelper.js";
 import { createLogger } from "../../utils/Logger.js";
 
 const logger = createLogger("purge");

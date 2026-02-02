@@ -1,30 +1,42 @@
 {
   "command": {
     "name": "language",
-    "description": "Change the server language",
-    "aliases": ["idioma", "lang", "lenguaje"]
+    "description": "Change server language",
+    "aliases": ["lang"],
+    "metadata": {
+      "contexts": ["guild"],
+      "guildOnly": true,
+      "cooldown": 5,
+      "permissions": {
+        "user": ["ManageGuild"],
+        "bot": []
+      }
+    }
   },
   "options": {
     "lang": {
+      "name": "lang",
       "type": "string",
-      "description": "Select the language for the server",
+      "description": "Language to set",
       "required": true,
       "choices": [
-        { "name": "English 🇺🇸", "value": "en" },
-        { "name": "Español 🇪🇸", "value": "es" }
+        {
+          "name": "English 🇺🇸",
+          "value": "en",
+          "display": "English 🇺🇸"
+        },
+        {
+          "name": "Español 🇪🇸",
+          "value": "es",
+          "display": "Español 🇪🇸"
+        }
       ]
     }
   },
-  "metadata": {
-    "guildOnly": true,
-    "permissions": {
-      "user": ["Administrator"]
-    }
-  },
   "responses": {
-    "updated_title": "✅ Language Updated",
-    "updated_description": "Server language changed to: **{lang}**",
-    "error_title": "❌ Error",
-    "error_description": "Could not change the server language"
+    "updated_title": "🌐 Language Updated",
+    "updated_description": "Server language successfully changed to **{lang}**.\n\n💡 *This change affects all bot commands on this server.*",
+    "error_title": "❌ Error Changing Language",
+    "error_description": "An error occurred while saving the language.\n\nPlease try again later."
   }
 }

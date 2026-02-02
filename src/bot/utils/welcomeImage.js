@@ -28,7 +28,7 @@ const CONFIG = {
   avatar: {
     size: 180,
     position: 'center', // 'center', 'left', 'right', o { x: number, y: number }
-    customPosition: { x: 400, y: 200 }, // { x: 100, y: 110 } para posición manual
+    customPosition: { x: 400, y: 200 },
     border: {
       enabled: true,
       width: 6,
@@ -37,38 +37,19 @@ const CONFIG = {
   },
   
   title: {
-    text: '¡Bienvenido!',
     font: {
       family: 'Libre Baskerville',
       size: 50,
       weight: 'bold'
     },
     color: '#ffffff',
-    position: { x: 'center', y: 70}, 
+    position: { x: 'center', y: 70 }, 
     shadow: {
       enabled: true,
       blur: 10,
       color: 'rgba(0, 0, 0, 0.7)',
       offsetX: 0,
       offsetY: 4
-    }
-  },
-  
-  username: {
-    font: {
-      family: 'Libre Baskerville',
-      size: 28,
-      weight: 'bold'
-    },
-    color: '#ffffff',
-    position: { x: 'center', y: -75 }, // Negativo = desde abajo
-    maxWidth: 600, 
-    shadow: {
-      enabled: true,
-      blur: 8,
-      color: 'rgba(0, 0, 0, 0.7)',
-      offsetX: 0,
-      offsetY: 3
     }
   },
   
@@ -79,7 +60,7 @@ const CONFIG = {
       weight: 'normal'
     },
     color: '#cccccc',
-    position: { x: 'center', y: -75 }, // Negativo = desde abajo
+    position: { x: 'center', y: -70 }, // Ajustado para compensar eliminación de username
     maxWidth: 650,
     lineHeight: 1.3,
     shadow: {
@@ -92,7 +73,6 @@ const CONFIG = {
   },
   
   fonts: {
-    // Agregar más fuentes aquí
     roboto: {
       path: path.join(__dirname, '../../../assets/fonts/Roboto-Bold.ttf'),
       family: 'Roboto'
@@ -121,11 +101,12 @@ try {
  * Genera imagen de bienvenida personalizada
  * @param {string} username - Nombre del usuario
  * @param {string} avatarUrl - URL del avatar
- * @param {string} welcomeText - Mensaje personalizado
+ * @param {string} welcomeText - Mensaje personalizado (ya interpolado)
+ * @param {string} title - Título de bienvenida (viene de i18n)
  * @param {object} overrides - Sobrescribe CONFIG temporalmente
  * @returns {Promise<Buffer>}
  */
-export async function generateWelcomeImage(username, avatarUrl, welcomeText, overrides = {}) {
+export async function generateWelcomeImage(username, avatarUrl, welcomeText, title, overrides = {}) {
   // Merge config con overrides
   const config = mergeConfig(CONFIG, overrides);
   
@@ -140,13 +121,10 @@ export async function generateWelcomeImage(username, avatarUrl, welcomeText, ove
     // 2. Avatar
     await drawAvatar(ctx, config, avatarUrl, width, height);
     
-    // 3. Título
-    drawTitle(ctx, config, width, height);
+    // 3. Título (ahora viene como parámetro desde i18n)
+    drawTitle(ctx, config, title, width, height);
     
-    // 4. Username
-    drawUsername(ctx, config, username, width, height);
-    
-    // 5. Mensaje de bienvenida
+    // 5. Mensaje de bienvenida (incluye el nombre)
     drawWelcomeText(ctx, config, welcomeText, width, height);
 
     return canvas.toBuffer('image/png');
@@ -247,10 +225,10 @@ async function drawAvatar(ctx, config, avatarUrl, width, height) {
 }
 
 /**
- * Dibuja el título
+ * Dibuja el título (ahora recibe el texto como parámetro)
  */
-function drawTitle(ctx, config, width, height) {
-  const { text, font, color, position, shadow } = config.title;
+function drawTitle(ctx, config, titleText, width, height) {
+  const { font, color, position, shadow } = config.title;
   
   ctx.font = `${font.weight} ${font.size}px ${font.family}`;
   ctx.fillStyle = color;
@@ -268,50 +246,9 @@ function drawTitle(ctx, config, width, height) {
     ctx.shadowOffsetY = shadow.offsetY;
   }
 
-  ctx.fillText(text, x, y);
+  ctx.fillText(titleText, x, y);
   
   // Reset shadow
-  ctx.shadowBlur = 0;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 0;
-}
-
-/**
- * Dibuja el username con truncamiento
- */
-function drawUsername(ctx, config, username, width, height) {
-  const { font, color, position, maxWidth, shadow } = config.username;
-  
-  ctx.font = `${font.weight} ${font.size}px ${font.family}`;
-  ctx.fillStyle = color;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-
-  const x = position.x === 'center' ? width / 2 : position.x;
-  const y = position.y < 0 ? height + position.y : position.y;
-
-  // Truncar si es muy largo
-  let displayName = username;
-  let textWidth = ctx.measureText(displayName).width;
-  
-  if (textWidth > maxWidth) {
-    while (textWidth > maxWidth - 30 && displayName.length > 0) {
-      displayName = displayName.slice(0, -1);
-      textWidth = ctx.measureText(displayName + '...').width;
-    }
-    displayName += '...';
-  }
-
-  // Sombra
-  if (shadow.enabled) {
-    ctx.shadowBlur = shadow.blur;
-    ctx.shadowColor = shadow.color;
-    ctx.shadowOffsetX = shadow.offsetX;
-    ctx.shadowOffsetY = shadow.offsetY;
-  }
-
-  ctx.fillText(displayName, x, y);
-  
   ctx.shadowBlur = 0;
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 0;

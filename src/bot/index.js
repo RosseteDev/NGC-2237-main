@@ -4,7 +4,7 @@ import "dotenv/config";
 import path from "path";
 import { loadCommands } from "./utils/loadCommands.js";
 import { clearCommandCache } from "./utils/commandbuilder.js";
-import { clearTranslationCache } from "./utils/TranslatorHelper.js";
+import { clearTranslationCache } from "./localization/TranslatorHelper.js";
 import LavalinkManager from "./music/LavalinkManager.js";
 import { handlePrefixCommand } from "./handlers/prefixHandler.js";
 import CommandHandler from "./utils/CommandHandler.js";
