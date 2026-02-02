@@ -38,12 +38,6 @@
       }
     }
   },
-  "metadata": {
-    "guildOnly": true,
-    "permissions": {
-      "user": ["Administrator"]
-    }
-  },
   "responses": {
     "enabled_title": "✅ Depuración Activada",
     "enabled_description": "**Módulos:** {modules}\n\n⚠️ Esto solo afecta esta instancia del bot.\nLos logs estarán más detallados.",

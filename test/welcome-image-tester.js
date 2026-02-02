@@ -187,7 +187,29 @@ switch (mode) {
     break;
   default:
     console.log(`
+🧪 Sistema de pruebas para imagen de bienvenida
 
+Uso:
+  npm run test:welcome <modo>
+
+Modos disponibles:
+  local       - Genera imagen y guarda en ./test/output
+  discord     - Envía imagen a un canal de Discord (requiere .env)
+  interactive - Genera múltiples escenarios para comparar
+
+Ejemplos:
+  npm run test:welcome local
+  npm run test:welcome discord
+  npm run test:welcome interactive
+
+Variables de entorno (solo para modo discord):
+  DISCORD_TOKEN      - Token del bot
+  TEST_CHANNEL_ID    - ID del canal de prueba
+
+Configuración:
+  Edita TEST_CONFIG en este archivo para cambiar:
+  - username, avatarUrl, welcomeText
+  - outputDir, outputFilename
 `);
     process.exit(0);
 }

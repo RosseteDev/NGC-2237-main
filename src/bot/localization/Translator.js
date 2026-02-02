@@ -5,10 +5,10 @@
 // ============================================
 
 import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from "discord.js";
-import { getCacheStats, createTranslator, detectLanguage, clearTranslationCache } from "../../utils/TranslatorHelper.js";
+import { getCacheStats, createTranslator, detectLanguage, clearTranslationCache } from "../utils/TranslatorHelper.js";
 import { readdir, readFile } from "fs/promises";
 import { join } from "path";
-import { createLogger } from "../../utils/Logger.js";
+import { createLogger } from "../utils/Logger.js";
 
 const logger = createLogger("command:translation-debug");
 

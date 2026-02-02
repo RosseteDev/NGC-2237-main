@@ -79,7 +79,7 @@ const CONFIG = {
       weight: 'normal'
     },
     color: '#cccccc',
-    position: { x: 'center', y: -35 }, // Negativo = desde abajo
+    position: { x: 'center', y: -75 }, // Negativo = desde abajo
     maxWidth: 650,
     lineHeight: 1.3,
     shadow: {

@@ -1,4 +1,4 @@
-// src/utils/TranslatorHelper.js
+// src/utils/Translator.js
 // ============================================
 // SISTEMA DE TRADUCCIÓN MODULAR V2 - DEBUG EDITION
 // Con logging detallado para diagnosticar problemas
@@ -7,7 +7,7 @@
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { createLogger } from './Logger.js';
+import { createLogger } from '../utils/Logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
