@@ -14,20 +14,39 @@ const CONFIG = {
     height: 400
   },
   
-  background: {
-    // Usa imagen si existe, sino color sólido
-    imagePath: path.join(__dirname, '../../../assets/backgrounds/welcome.jpg'),
-    fallbackColor: '#36393f',
-    // Opcional: overlay oscuro sobre la imagen
-    overlay: {
-      enabled: true,
-      color: 'rgba(0, 0, 0, 0.3)'
+  // Gradientes según género (reemplaza background con imagen)
+  gradients: {
+    male: {
+      type: 'linear', // 'linear' o 'radial'
+      colors: ['#4A90E2', '#2E5F8D', '#1A3A5C'], // Azul degradado
+      angle: 135, // Diagonal en grados
+      overlay: { enabled: true, color: 'rgba(0, 0, 0, 0.2)' }
+    },
+    female: {
+      type: 'linear',
+      colors: ['#E91E63', '#C2185B', '#880E4F'], // Rosa/magenta degradado
+      angle: 135,
+      overlay: { enabled: true, color: 'rgba(0, 0, 0, 0.2)' }
+    },
+    nonbinary: {
+      type: 'linear',
+      colors: ['#9C27B0', '#7B1FA2', '#4A148C'], // Púrpura degradado
+      angle: 135,
+      overlay: { enabled: true, color: 'rgba(0, 0, 0, 0.2)' }
+    },
+    neutral: {
+      type: 'granular', // Tipo especial para fondo granulado
+      baseColor: '#4A4A4A',
+      grainSize: 2,
+      grainDensity: 0.3,
+      noiseIntensity: 0.1,
+      overlay: { enabled: false }
     }
   },
   
   avatar: {
     size: 180,
-    position: 'center', // 'center', 'left', 'right', o { x: number, y: number }
+    position: 'center', // 'center', 'left', 'right'
     customPosition: { x: 400, y: 200 },
     border: {
       enabled: true,
@@ -60,11 +79,11 @@ const CONFIG = {
       weight: 'normal'
     },
     color: '#cccccc',
-    position: { x: 'center', y: -70 }, // Ajustado para compensar eliminación de username
+    position: { x: 'center', y: -70 },
     maxWidth: 650,
     lineHeight: 1.3,
     shadow: {
-      enabled: false,
+      enabled: true,
       blur: 5,
       color: 'rgba(0, 0, 0, 0.5)',
       offsetX: 0,
@@ -77,7 +96,7 @@ const CONFIG = {
       path: path.join(__dirname, '../../../assets/fonts/Roboto-Bold.ttf'),
       family: 'Roboto'
     },
-    bastkerville: {
+    baskerville: {
       path: path.join(__dirname, '../../../assets/fonts/LibreBaskerville-Bold.ttf'),
       family: 'Libre Baskerville'
     }
@@ -103,11 +122,20 @@ try {
  * @param {string} avatarUrl - URL del avatar
  * @param {string} welcomeText - Mensaje personalizado (ya interpolado)
  * @param {string} title - Título de bienvenida (viene de i18n)
- * @param {object} overrides - Sobrescribe CONFIG temporalmente
+ * @param {object} options - Opciones adicionales
+ * @param {string} options.imageVariant - 'male', 'female', 'nonbinary', 'neutral'
  * @returns {Promise<Buffer>}
  */
-export async function generateWelcomeImage(username, avatarUrl, welcomeText, title, overrides = {}) {
-  // Merge config con overrides
+export async function generateWelcomeImage(username, avatarUrl, welcomeText, title, options = {}) {
+  // Extraer variante de género
+  const { imageVariant = 'neutral' } = options;
+  
+  // Validar variante
+  const validVariants = ['male', 'female', 'nonbinary', 'neutral'];
+  const variant = validVariants.includes(imageVariant) ? imageVariant : 'neutral';
+  
+  // Merge config con overrides si existen
+  const overrides = options.overrides || {};
   const config = mergeConfig(CONFIG, overrides);
   
   const { width, height } = config.canvas;
@@ -115,16 +143,16 @@ export async function generateWelcomeImage(username, avatarUrl, welcomeText, tit
   const ctx = canvas.getContext('2d');
 
   try {
-    // 1. Fondo
-    await drawBackground(ctx, config, width, height);
+    // 1. Fondo con gradiente o granulado según variante
+    drawGradientBackground(ctx, config, variant, width, height);
     
     // 2. Avatar
     await drawAvatar(ctx, config, avatarUrl, width, height);
     
-    // 3. Título (ahora viene como parámetro desde i18n)
+    // 3. Título
     drawTitle(ctx, config, title, width, height);
     
-    // 5. Mensaje de bienvenida (incluye el nombre)
+    // 4. Mensaje de bienvenida
     drawWelcomeText(ctx, config, welcomeText, width, height);
 
     return canvas.toBuffer('image/png');
@@ -136,31 +164,106 @@ export async function generateWelcomeImage(username, avatarUrl, welcomeText, tit
 }
 
 /**
- * Dibuja el fondo (imagen o color)
+ * Dibuja el fondo con gradiente o textura granulada
  */
-async function drawBackground(ctx, config, width, height) {
-  const { imagePath, fallbackColor, overlay } = config.background;
+function drawGradientBackground(ctx, config, variant, width, height) {
+  const gradientConfig = config.gradients[variant] || config.gradients.neutral;
   
-  // Intentar cargar imagen
-  if (fs.existsSync(imagePath)) {
-    try {
-      const bg = await loadImage(imagePath);
-      ctx.drawImage(bg, 0, 0, width, height);
-      
-      // Overlay oscuro opcional
-      if (overlay.enabled) {
-        ctx.fillStyle = overlay.color;
-        ctx.fillRect(0, 0, width, height);
-      }
-      return;
-    } catch (err) {
-      console.warn('[WARN] Error loading background image:', err.message);
+  if (gradientConfig.type === 'granular') {
+    // Fondo granulado grisáceo para neutral
+    drawGranularBackground(ctx, gradientConfig, width, height);
+  } else {
+    // Gradiente de colores
+    drawColorGradient(ctx, gradientConfig, width, height);
+  }
+}
+
+/**
+ * Dibuja un gradiente de colores
+ */
+function drawColorGradient(ctx, gradientConfig, width, height) {
+  const { colors, angle, overlay, type } = gradientConfig;
+  
+  let gradient;
+  
+  if (type === 'radial') {
+    // Gradiente radial desde el centro
+    gradient = ctx.createRadialGradient(
+      width / 2, height / 2, 0,
+      width / 2, height / 2, Math.max(width, height) / 2
+    );
+  } else {
+    // Gradiente lineal con ángulo
+    const angleRad = (angle * Math.PI) / 180;
+    const x1 = width / 2 - Math.cos(angleRad) * width / 2;
+    const y1 = height / 2 - Math.sin(angleRad) * height / 2;
+    const x2 = width / 2 + Math.cos(angleRad) * width / 2;
+    const y2 = height / 2 + Math.sin(angleRad) * height / 2;
+    
+    gradient = ctx.createLinearGradient(x1, y1, x2, y2);
+  }
+  
+  // Agregar colores al gradiente
+  const step = 1 / (colors.length - 1);
+  colors.forEach((color, index) => {
+    gradient.addColorStop(index * step, color);
+  });
+  
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+  
+  // Overlay oscuro opcional
+  if (overlay.enabled) {
+    ctx.fillStyle = overlay.color;
+    ctx.fillRect(0, 0, width, height);
+  }
+}
+
+/**
+ * Dibuja un fondo granulado grisáceo
+ */
+function drawGranularBackground(ctx, config, width, height) {
+  const { baseColor, grainSize, grainDensity, noiseIntensity } = config;
+  
+  // 1. Base grisácea
+  ctx.fillStyle = baseColor;
+  ctx.fillRect(0, 0, width, height);
+  
+  // 2. Gradiente sutil para profundidad
+  const gradient = ctx.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, 'rgba(60, 60, 60, 0.3)');
+  gradient.addColorStop(0.5, 'rgba(74, 74, 74, 0.1)');
+  gradient.addColorStop(1, 'rgba(50, 50, 50, 0.3)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+  
+  // 3. Textura granulada (partículas)
+  const grainCount = Math.floor((width * height * grainDensity) / (grainSize * grainSize));
+  
+  for (let i = 0; i < grainCount; i++) {
+    const x = Math.random() * width;
+    const y = Math.random() * height;
+    const brightness = Math.random() * 60 - 30; // -30 a +30
+    const alpha = Math.random() * 0.15 + 0.05; // 0.05 a 0.2
+    
+    ctx.fillStyle = `rgba(${128 + brightness}, ${128 + brightness}, ${128 + brightness}, ${alpha})`;
+    ctx.fillRect(x, y, grainSize, grainSize);
+  }
+  
+  // 4. Ruido fino adicional (píxel por píxel)
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const pixels = imageData.data;
+  
+  for (let i = 0; i < pixels.length; i += 4) {
+    if (Math.random() < noiseIntensity) {
+      const noise = Math.random() * 20 - 10;
+      pixels[i] = Math.max(0, Math.min(255, pixels[i] + noise));     // R
+      pixels[i + 1] = Math.max(0, Math.min(255, pixels[i + 1] + noise)); // G
+      pixels[i + 2] = Math.max(0, Math.min(255, pixels[i + 2] + noise)); // B
     }
   }
   
-  // Fallback a color sólido
-  ctx.fillStyle = fallbackColor;
-  ctx.fillRect(0, 0, width, height);
+  ctx.putImageData(imageData, 0, 0);
 }
 
 /**
@@ -171,7 +274,7 @@ async function drawAvatar(ctx, config, avatarUrl, width, height) {
   
   // Calcular posición
   let x, y;
-  if (customPosition) {
+  if (customPosition && position === 'custom') {
     x = customPosition.x;
     y = customPosition.y;
   } else {
@@ -216,16 +319,24 @@ async function drawAvatar(ctx, config, avatarUrl, width, height) {
     
   } catch (err) {
     console.error('[ERROR] Error loading avatar:', err.message);
-    // Fallback: círculo azul Discord
+    // Fallback: círculo azul Discord con inicial
+    const radius = size / 2;
     ctx.fillStyle = '#7289da';
     ctx.beginPath();
-    ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fill();
+    
+    // Añadir inicial del nombre
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${size / 2}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(avatarUrl.charAt(0).toUpperCase(), x, y);
   }
 }
 
 /**
- * Dibuja el título (ahora recibe el texto como parámetro)
+ * Dibuja el título
  */
 function drawTitle(ctx, config, titleText, width, height) {
   const { font, color, position, shadow } = config.title;
