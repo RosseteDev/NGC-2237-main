@@ -37,9 +37,9 @@ const CONFIG = {
   },
   
   title: {
-    text: '¡BIENVENIDO!',
+    text: '¡Bienvenido!',
     font: {
-      family: 'Roboto',
+      family: 'Libre Baskerville',
       size: 50,
       weight: 'bold'
     },
@@ -56,7 +56,7 @@ const CONFIG = {
   
   username: {
     font: {
-      family: 'Roboto',
+      family: 'Libre Baskerville',
       size: 28,
       weight: 'bold'
     },
@@ -74,7 +74,7 @@ const CONFIG = {
   
   welcomeText: {
     font: {
-      family: 'Roboto',
+      family: 'Libre Baskerville',
       size: 24,
       weight: 'normal'
     },
@@ -96,11 +96,11 @@ const CONFIG = {
     roboto: {
       path: path.join(__dirname, '../../../assets/fonts/Roboto-Bold.ttf'),
       family: 'Roboto'
+    },
+    bastkerville: {
+      path: path.join(__dirname, '../../../assets/fonts/LibreBaskerville-Bold.ttf'),
+      family: 'Libre Baskerville'
     }
-    // custom: {
-    //   path: path.join(__dirname, '../../../assets/fonts/Custom.ttf'),
-    //   family: 'CustomFont'
-    // }
   }
 };
 
