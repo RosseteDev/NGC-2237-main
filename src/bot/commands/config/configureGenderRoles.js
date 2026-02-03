@@ -9,9 +9,9 @@ import {
   ButtonStyle,
   MessageFlags
 } from "discord.js";
-import { createTranslator } from "../localization/TranslatorHelper.js";
+import { createTranslator } from "../../localization/TranslatorHelper.js";
 import { getGenderRolesConfig } from "./GenderRolesConfig.js";
-import { createLogger } from "../utils/Logger.js";
+import { createLogger } from "../../utils/Logger.js";
 
 const logger = createLogger("command:gender-config");
 
@@ -357,7 +357,7 @@ async function handleTest(context, interaction, guildId, genderConfig, t) {
 
   try {
     // Importar dinámicamente para evitar dependencias circulares
-    const { generateWelcomeImage } = await import("../utils/welcomeImage.js");
+    const { generateWelcomeImage } = await import("../../utils/welcomeImage.js");
 
     const testMessages = {
       male: {

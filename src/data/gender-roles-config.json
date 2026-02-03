@@ -3,16 +3,16 @@
     "enabled": true,
     "roles": {
       "male": {
-        "id": "1467043364787716096"
+        "id": "1468115135242571939"
       },
       "female": {
-        "id": "1467020038216351802"
+        "id": "1468115142423216254"
       },
       "nonbinary": {
-        "id": null
+        "id": "1468115149616578571"
       }
     },
-    "timeout": 30000,
+    "timeout": 100000,
     "fallbackBehavior": "neutral",
     "notifyOnTimeout": false
   }

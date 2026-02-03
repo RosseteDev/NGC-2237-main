@@ -5,7 +5,7 @@ import { detectLanguage, createTranslator } from "../../localization/TranslatorH
 import { generateWelcomeImage } from "../../utils/welcomeImage.js";
 import { createLogger } from "../../utils/Logger.js";
 import { getPendingMembersManager } from "../../managers/PendingMembersManager.js";
-import { getGenderRolesConfig } from "../../config/GenderRolesConfig.js";
+import { getGenderRolesConfig } from "../../commands/config/GenderRolesConfig.js";
 
 const logger = createLogger("event:welcome");
 

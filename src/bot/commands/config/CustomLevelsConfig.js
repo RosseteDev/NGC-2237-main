@@ -1,6 +1,6 @@
 // src/bot/config/CustomLevelsConfig.js
 
-import { createLogger } from "../utils/Logger.js";
+import { createLogger } from "../../utils/Logger.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
