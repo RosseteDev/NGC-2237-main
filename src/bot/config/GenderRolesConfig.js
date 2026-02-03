@@ -15,7 +15,7 @@ const logger = createLogger("gender-config");
  */
 class GenderRolesConfig {
   constructor() {
-    this.configPath = path.join(__dirname, "../../data/gender-roles-config.json");
+    this.configPath = path.join(__dirname, "../../../data/gender-roles-config.json");
     this.config = new Map();
     this.load();
   }
@@ -163,6 +163,60 @@ class GenderRolesConfig {
     }
 
     return null;
+  }
+
+  /**
+   * Detectar género desde array de IDs de roles
+   * @param {string} guildId - ID del servidor
+   * @param {string[]} roleIds - Array de IDs de roles
+   * @returns {string|null} 'male', 'female', 'nonbinary', o null
+   */
+  detectGenderFromRoles(guildId, roleIds) {
+    const config = this.getGuildConfig(guildId);
+    
+    if (!config.enabled) return null;
+
+    // Verificar cada rol de género
+    if (config.roles.male?.id && roleIds.includes(config.roles.male.id)) {
+      return "male";
+    }
+    
+    if (config.roles.female?.id && roleIds.includes(config.roles.female.id)) {
+      return "female";
+    }
+    
+    if (config.roles.nonbinary?.id && roleIds.includes(config.roles.nonbinary.id)) {
+      return "nonbinary";
+    }
+
+    return null;
+  }
+
+  /**
+   * Obtener timeout configurado para un servidor
+   * @param {string} guildId - ID del servidor
+   * @returns {number} Timeout en milisegundos
+   */
+  getTimeout(guildId) {
+    const config = this.getGuildConfig(guildId);
+    return config.timeout || 300000; // 5 minutos por defecto
+  }
+
+  /**
+   * Obtener variante de imagen según género
+   * @param {string} guildId - ID del servidor
+   * @param {string} gender - 'male', 'female', 'nonbinary'
+   * @returns {string} Variante de imagen
+   */
+  getImageVariant(guildId, gender) {
+    // Mapeo directo
+    const variants = {
+      male: 'male',
+      female: 'female',
+      nonbinary: 'nonbinary'
+    };
+    
+    return variants[gender] || 'neutral';
   }
 
   /**

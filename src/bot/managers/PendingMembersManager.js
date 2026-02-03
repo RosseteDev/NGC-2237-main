@@ -7,16 +7,10 @@ const logger = createLogger("manager:pending-members");
 /**
  * Sistema de gestión de miembros pendientes con auto-limpieza
  * Optimizado para bajo uso de memoria y alta eficiencia
- * 
- * Complejidad temporal:
- * - set: O(1)
- * - get: O(1)
- * - delete: O(1)
- * - cleanup: O(n) donde n es el número de miembros pendientes
  */
 class PendingMembersManager {
   constructor(config = {}) {
-    // Map para O(1) lookups - más eficiente que objeto plano
+    // Map para O(1) lookups
     this._pendingMembers = new Map();
     
     // Configuración con valores por defecto
@@ -27,7 +21,7 @@ class PendingMembersManager {
       ...config
     };
     
-    // Auto-limpieza periódica para evitar memory leaks
+    // Auto-limpieza periódica
     this._startCleanupTimer();
     
     logger.info(`PendingMembersManager initialized (timeout: ${this.config.waitTimeout}ms)`);
@@ -35,13 +29,8 @@ class PendingMembersManager {
 
   /**
    * Registra un nuevo miembro pendiente
-   * @param {string} userId - ID del usuario
-   * @param {string} guildId - ID del servidor
-   * @param {object} memberData - Datos adicionales del miembro
-   * @returns {boolean} - true si se registró exitosamente
    */
   add(userId, guildId, memberData = {}) {
-    // Validación de entrada defensiva
     if (!userId || typeof userId !== 'string') {
       logger.error("Invalid userId provided to add()");
       return false;
@@ -79,9 +68,6 @@ class PendingMembersManager {
 
   /**
    * Obtiene datos de un miembro pendiente
-   * @param {string} userId 
-   * @param {string} guildId 
-   * @returns {object|null} - Datos del miembro o null si no existe/expiró
    */
   get(userId, guildId) {
     const key = this._generateKey(userId, guildId);
@@ -103,9 +89,6 @@ class PendingMembersManager {
 
   /**
    * Elimina un miembro pendiente
-   * @param {string} userId 
-   * @param {string} guildId 
-   * @returns {boolean} - true si se eliminó
    */
   delete(userId, guildId) {
     const key = this._generateKey(userId, guildId);
@@ -116,42 +99,6 @@ class PendingMembersManager {
     }
     
     return deleted;
-  }
-
-  /**
-   * Verifica si un miembro está pendiente
-   * @param {string} userId 
-   * @param {string} guildId 
-   * @returns {boolean}
-   */
-  has(userId, guildId) {
-    return this.get(userId, guildId) !== null;
-  }
-
-  /**
-   * Obtiene tiempo restante antes de expiración
-   * @param {string} userId 
-   * @param {string} guildId 
-   * @returns {number|null} - Milisegundos restantes o null
-   */
-  getTimeRemaining(userId, guildId) {
-    const entry = this.get(userId, guildId);
-    if (!entry) return null;
-    
-    return Math.max(0, entry.expiresAt - Date.now());
-  }
-
-  /**
-   * Obtiene estadísticas del manager
-   * @returns {object}
-   */
-  getStats() {
-    return {
-      pendingCount: this._pendingMembers.size,
-      maxCapacity: this.config.maxPendingMembers,
-      utilizationPercent: (this._pendingMembers.size / this.config.maxPendingMembers * 100).toFixed(2),
-      config: { ...this.config }
-    };
   }
 
   /**
@@ -171,7 +118,6 @@ class PendingMembersManager {
       this._cleanup();
     }, this.config.cleanupInterval);
 
-    // Prevenir que el timer mantenga el proceso vivo
     if (this._cleanupTimer.unref) {
       this._cleanupTimer.unref();
     }
@@ -188,7 +134,6 @@ class PendingMembersManager {
     const initialSize = this._pendingMembers.size;
     let removedCount = 0;
 
-    // Iterar y eliminar expirados - O(n) pero solo corre periódicamente
     for (const [key, entry] of this._pendingMembers.entries()) {
       if (now > entry.expiresAt) {
         this._pendingMembers.delete(key);
@@ -206,13 +151,9 @@ class PendingMembersManager {
    * @private
    */
   _forceCleanup() {
-    const now = Date.now();
-    
-    // Convertir a array y ordenar por timestamp (más viejos primero)
     const entries = Array.from(this._pendingMembers.entries())
       .sort((a, b) => a[1].timestamp - b[1].timestamp);
 
-    // Eliminar 20% más viejo
     const toRemove = Math.ceil(entries.length * 0.2);
     
     for (let i = 0; i < toRemove; i++) {
@@ -243,8 +184,6 @@ let instance = null;
 
 /**
  * Obtiene o crea la instancia singleton
- * @param {object} config - Configuración (solo se usa en primera llamada)
- * @returns {PendingMembersManager}
  */
 export function getPendingMembersManager(config = {}) {
   if (!instance) {

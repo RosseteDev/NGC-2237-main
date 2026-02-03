@@ -24,7 +24,7 @@ const CONFIG = {
     },
     female: {
       type: 'linear',
-      colors: ['#E91E63', '#C2185B', '#880E4F'], // Rosa/magenta degradado
+      colors: ['#ff699b', '#f14087', '#c92a7f'], // Rosa/magenta degradado
       angle: 135,
       overlay: { enabled: true, color: 'rgba(0, 0, 0, 0.2)' }
     },
@@ -66,7 +66,7 @@ const CONFIG = {
     shadow: {
       enabled: true,
       blur: 10,
-      color: 'rgba(0, 0, 0, 0.7)',
+      color: 'rgba(226, 210, 210, 0.7)',
       offsetX: 0,
       offsetY: 4
     }
@@ -85,7 +85,7 @@ const CONFIG = {
     shadow: {
       enabled: true,
       blur: 5,
-      color: 'rgba(0, 0, 0, 0.5)',
+      color: 'rgba(206, 191, 191, 0.5)',
       offsetX: 0,
       offsetY: 2
     }

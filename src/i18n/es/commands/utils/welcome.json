@@ -4,10 +4,8 @@
   "title_female": "¡Bienvenida!",
   "title_neutral": "¡Bienvenide!",
   
-  "message": "Nos alegra tenerte aquí, {user}. Disfruta tu estadía en {server}",
-  "message_male": "Nos alegra tenerte aquí, {user}. Esperamos que disfrutes tu estadía en {server}",
-  "message_female": "Nos alegra tenerte aquí, {user}. Esperamos que disfrutes tu estadía en {server}",
-  "message_neutral": "Nos alegra tenerte aquí, {user}. Esperamos que disfrutes tu estadía en {server}",
-
-  "timeout_notification": "Hola! Notamos que aún no has seleccionado tu rol de género en {server}. Puedes hacerlo cuando quieras en el canal de comunidad. 😊"
+  "message": "Nos alegra tenerte aquí, {user}. Disfruta tu estadía",
+  "message_male": "Nos alegra tenerte aquí, {user}. Disfruta tu estadía",
+  "message_female": "Nos alegra tenerte aquí, {user}. Disfruta tu estadía",
+  "message_neutral": "Nos alegra tenerte aquí, {user}. Disfruta tu estadía"
 }

@@ -1,15 +1,15 @@
 {
-  "title": "¡Bienvenidas!",
-  "title_male": "¡Bienvenido!",
-  "title_female": "¡Bienvenida!",
-  "title_neutral": "¡Bienvenide!",
+  "title": "Welcome!",
+  "title_male": "Welcome!",
+  "title_female": "Welcome!",
+  "title_neutral": "Welcome!",
   
-  "message": "Nos alegra tenerte aquí, {user}. Disfruta tu estadía en {server}",
-  "message_male": "Nos alegra tenerte aquí, {user}. Esperamos que disfrutes tu estadía en {server}",
-  "message_female": "Nos alegra tenerte aquí, {user}. Esperamos que disfrutes tu estadía en {server}",
-  "message_neutral": "Nos alegra tenerte aquí, {user}. Esperamos que disfrutes tu estadía en {server}",
+  "message": "We're glad to have you here, {user}. Enjoy your stay in {server}",
+  "message_male": "We're glad to have you here, {user}. Enjoy your stay in {server}",
+  "message_female": "We're glad to have you here, {user}. Enjoy your stay in {server}",
+  "message_neutral": "We're glad to have you here, {user}. Enjoy your stay in {server}",
   
-  "role_reminder": "¡Hola {user}! No olvides seleccionar tu rol en el canal de comunidad para recibir una bienvenida personalizada. ⚧️",
+  "role_reminder": "Hello {user}! Don't forget to select your role in the community channel to receive a personalized welcome. ⚧️",
   
-  "timeout_notification": "Hola! Notamos que aún no has seleccionado tu rol de género en {server}. Puedes hacerlo cuando quieras en el canal de comunidad. 😊"
+  "timeout_notification": "Hello! We noticed you haven't selected your gender role in {server} yet. You can do so anytime in the community channel. 😊"
 }

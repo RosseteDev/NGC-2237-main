@@ -18,8 +18,6 @@ const logger = createLogger("event:welcome");
  * 3. Si selecciona rol de género antes del timeout -> Imagen personalizada
  * 4. Si timeout expira -> Imagen genérica/neutral
  * 5. Si sale del servidor -> Auto-cleanup
- * 
- * Complejidad: O(1) para todas las operaciones gracias a Map
  */
 export default client => {
   const pendingManager = getPendingMembersManager({
@@ -225,19 +223,9 @@ export default client => {
           logger.info(`Skipping welcome for ${member.user.tag} (timeout expired)`);
           break;
           
-        case 'ask':
-          // Enviar mensaje pidiendo que seleccione rol
-          await sendRoleReminderMessage(member, welcomeChannel);
-          break;
-          
         default:
           // Por defecto: neutral
           await sendWelcomeMessage(member, welcomeChannel, null);
-      }
-
-      // Opcional: notificar al usuario por DM
-      if (config.notifyOnTimeout) {
-        await sendTimeoutNotification(member, guildId);
       }
 
     } catch (err) {
@@ -246,7 +234,7 @@ export default client => {
   }
 
   /**
-   * Envía el mensaje de bienvenida con imagen
+   * Envía el mensaje de bienvenida con imagen usando traducciones
    * @private
    */
   async function sendWelcomeMessage(member, channel, gender) {
@@ -265,18 +253,18 @@ export default client => {
         eventContext
       );
 
-      // Seleccionar título y mensaje según género
+      // ✅ CORRECCIÓN: Seleccionar título y mensaje según género usando traducciones
       let titleKey = "title";
       let messageKey = "message";
 
       if (gender === 'male') {
-        titleKey = "title_male";      // "¡Bienvenido!"
-        messageKey = "message_male";  // "Nos alegra tenerte aquí, {user}..."
+        titleKey = "title_male";
+        messageKey = "message_male";
       } else if (gender === 'female') {
-        titleKey = "title_female";    // "¡Bienvenida!"
-        messageKey = "message_female"; // "Nos alegra tenerte aquí, {user}..."
+        titleKey = "title_female";
+        messageKey = "message_female";
       } else if (gender === 'nonbinary') {
-        titleKey = "title_neutral";   // "¡Bienvenide!"
+        titleKey = "title_neutral";
         messageKey = "message_neutral";
       }
       // Si gender es null, usa las claves por defecto (neutral)
@@ -293,7 +281,7 @@ export default client => {
 
       // Generar imagen con variante de género
       const imageVariant = gender 
-        ? getGenderRolesConfig().getImageVariant(member.guild.id, gender)
+        ? genderConfig.getImageVariant(member.guild.id, gender)
         : 'neutral';
 
       const imageBuffer = await generateWelcomeImage(
@@ -318,32 +306,6 @@ export default client => {
 
     } catch (err) {
       logger.error("Failed to send welcome message", err);
-    }
-  }
-
-  /**
-   * Envía mensaje recordatorio para seleccionar rol
-   * @private
-   */
-  async function sendRoleReminderMessage(member, channel) {
-    try {
-      const t = await createTranslator(
-        { category: "utils", name: "welcome" },
-        { guild: member.guild, user: member.user }
-      );
-
-      const reminderMsg = t("role_reminder", {
-        user: member.user.username
-      });
-
-      await channel.send({
-        content: `<@${member.id}> ${reminderMsg}`
-      });
-
-      logger.info(`Role reminder sent to ${member.user.tag}`);
-
-    } catch (err) {
-      logger.error("Failed to send role reminder", err);
     }
   }
 

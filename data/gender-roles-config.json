@@ -1,0 +1,36 @@
+{
+  "1467020037784211520": {
+    "enabled": true,
+    "roles": {
+      "male": {
+        "id": "1467986904992710738"
+      },
+      "female": {
+        "id": "1467987138652934156"
+      },
+      "nonbinary": {
+        "id": null
+      }
+    },
+    "timeout": 30000,
+    "fallbackBehavior": "neutral",
+    "notifyOnTimeout": false
+  },
+  "1455779364720607344": {
+    "enabled": false,
+    "roles": {
+      "male": {
+        "id": "1468085988856303717"
+      },
+      "female": {
+        "id": "1466659215731855466"
+      },
+      "nonbinary": {
+        "id": null
+      }
+    },
+    "timeout": 300000,
+    "fallbackBehavior": "neutral",
+    "notifyOnTimeout": false
+  }
+}
