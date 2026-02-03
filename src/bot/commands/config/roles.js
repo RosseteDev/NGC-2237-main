@@ -9,61 +9,447 @@ const logger = createLogger("command:setup-degeneracy");
 // ✅ ID del servidor autorizado (Degeneracy Den)
 const AUTHORIZED_GUILD_ID = "1467020037784211520";
 
-// Estructura completa de roles
+// Estructura completa de roles CON PERMISOS ESPECÍFICOS
 const ROLE_STRUCTURE = {
   moderadores: [
-    { name: "Fundador / Dueño", color: "#000000", position: 100 },
-    { name: "Co-Fundador / Gestor", color: "#370617", position: 99 },
-    { name: "Consejero de la Den", color: "#5E60CE", position: 98 },
-    { name: "Inquisidor", color: "#A61E4D", position: 97 },
-    { name: "Defensor de la Den", color: "#E63946", position: 96 },
-    { name: "Guardián Nocturno", color: "#FF8C42", position: 95 },
-    { name: "Alma en Prueba", color: "#FF6B6B", position: 94 }
+    { 
+      name: "Fundador / Dueño", 
+      color: "#000000", 
+      position: 100,
+      permissions: [
+        PermissionFlagsBits.Administrator // Todos los permisos
+      ]
+    },
+    { 
+      name: "Co-Fundador / Gestor", 
+      color: "#370617", 
+      position: 99,
+      permissions: [
+        PermissionFlagsBits.ManageGuild,
+        PermissionFlagsBits.ManageRoles,
+        PermissionFlagsBits.ManageChannels,
+        PermissionFlagsBits.KickMembers,
+        PermissionFlagsBits.BanMembers,
+        PermissionFlagsBits.ManageMessages,
+        PermissionFlagsBits.ManageWebhooks,
+        PermissionFlagsBits.ManageEmojisAndStickers,
+        PermissionFlagsBits.ViewAuditLog,
+        PermissionFlagsBits.ModerateMembers
+      ]
+    },
+    { 
+      name: "Consejero de la Den", 
+      color: "#5E60CE", 
+      position: 98,
+      permissions: [
+        PermissionFlagsBits.ManageChannels,
+        PermissionFlagsBits.KickMembers,
+        PermissionFlagsBits.BanMembers,
+        PermissionFlagsBits.ManageMessages,
+        PermissionFlagsBits.ViewAuditLog,
+        PermissionFlagsBits.ModerateMembers,
+        PermissionFlagsBits.MuteMembers,
+        PermissionFlagsBits.DeafenMembers,
+        PermissionFlagsBits.MoveMembers
+      ]
+    },
+    { 
+      name: "Inquisidor", 
+      color: "#A61E4D", 
+      position: 97,
+      permissions: [
+        PermissionFlagsBits.KickMembers,
+        PermissionFlagsBits.BanMembers,
+        PermissionFlagsBits.ManageMessages,
+        PermissionFlagsBits.ModerateMembers,
+        PermissionFlagsBits.ViewAuditLog,
+        PermissionFlagsBits.MuteMembers,
+        PermissionFlagsBits.DeafenMembers
+      ]
+    },
+    { 
+      name: "Defensor de la Den", 
+      color: "#E63946", 
+      position: 96,
+      permissions: [
+        PermissionFlagsBits.KickMembers,
+        PermissionFlagsBits.ManageMessages,
+        PermissionFlagsBits.ModerateMembers,
+        PermissionFlagsBits.MuteMembers,
+        PermissionFlagsBits.DeafenMembers,
+        PermissionFlagsBits.MoveMembers
+      ]
+    },
+    { 
+      name: "Guardián Nocturno", 
+      color: "#FF8C42", 
+      position: 95,
+      permissions: [
+        PermissionFlagsBits.ManageMessages,
+        PermissionFlagsBits.ModerateMembers,
+        PermissionFlagsBits.MuteMembers,
+        PermissionFlagsBits.DeafenMembers
+      ]
+    },
+    { 
+      name: "Alma en Prueba", 
+      color: "#FF6B6B", 
+      position: 94,
+      permissions: [
+        PermissionFlagsBits.ManageMessages,
+        PermissionFlagsBits.MuteMembers
+      ]
+    }
   ],
   
   vip: [
-    { name: "Noble de la Corte", color: "#E0115F", position: 93 },
-    { name: "Titular de un Lugar en la Den", color: "#FFC300", position: 92 },
-    { name: "Guardián del Santuario", color: "#BF00FF", position: 91 },
-    { name: "Aliado de la Den", color: "#E6B0AA", position: 90 },
-    { name: "Mecenas de la Decadencia", color: "#39FF14", position: 89 },
-    { name: "Patrón de la Oscuridad", color: "#00D9FF", position: 88 }
+    { 
+      name: "Noble de la Corte", 
+      color: "#E0115F", 
+      position: 93,
+      permissions: [
+        PermissionFlagsBits.CreateInstantInvite,
+        PermissionFlagsBits.ChangeNickname,
+        PermissionFlagsBits.ManageNicknames,
+        PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.UseExternalEmojis,
+        PermissionFlagsBits.UseExternalStickers
+      ]
+    },
+    { 
+      name: "Titular de un Lugar en la Den", 
+      color: "#FFC300", 
+      position: 92,
+      permissions: [
+        PermissionFlagsBits.CreateInstantInvite,
+        PermissionFlagsBits.ChangeNickname,
+        PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.UseExternalEmojis
+      ]
+    },
+    { 
+      name: "Guardián del Santuario", 
+      color: "#BF00FF", 
+      position: 91,
+      permissions: [
+        PermissionFlagsBits.CreateInstantInvite,
+        PermissionFlagsBits.ChangeNickname,
+        PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.AttachFiles
+      ]
+    },
+    { 
+      name: "Aliado de la Den", 
+      color: "#E6B0AA", 
+      position: 90,
+      permissions: [
+        PermissionFlagsBits.ChangeNickname,
+        PermissionFlagsBits.EmbedLinks
+      ]
+    },
+    { 
+      name: "Mecenas de la Decadencia", 
+      color: "#39FF14", 
+      position: 89,
+      permissions: [
+        PermissionFlagsBits.ChangeNickname
+      ]
+    },
+    { 
+      name: "Patrón de la Oscuridad", 
+      color: "#00D9FF", 
+      position: 88,
+      permissions: [] // Sin permisos especiales
+    }
+  ],
+  
+  genero: [
+    { 
+      name: "♂️ Hombre", 
+      color: "#4A90E2", // Azul clásico masculino
+      position: 86,
+      permissions: [
+        PermissionFlagsBits.ChangeNickname
+      ]
+    },
+    { 
+      name: "♀️ Mujer", 
+      color: "#FF69B4", // Rosa clásico femenino
+      position: 85,
+      permissions: [
+        PermissionFlagsBits.ChangeNickname
+      ]
+    },
+    { 
+      name: "⚧️ No Binario", 
+      color: "#9B59B6", // Púrpura (neutro)
+      position: 84,
+      permissions: [
+        PermissionFlagsBits.ChangeNickname
+      ]
+    },
+    { 
+      name: "❓ Prefiero no decir", 
+      color: "#95A5A6", // Gris neutro
+      position: 83,
+      permissions: [
+        PermissionFlagsBits.ChangeNickname
+      ]
+    }
   ],
   
   contribucion: [
-    { name: "Guía de Novatos", color: "#BFFF00", position: 87 },
-    { name: "Artista de la Den", color: "#E6E6FA", position: 86 },
-    { name: "Meme Lord", color: "#FFDB58", position: 85 }
+    { 
+      name: "Guía de Novatos", 
+      color: "#BFFF00", 
+      position: 82,
+      permissions: [
+        PermissionFlagsBits.MentionEveryone,
+        PermissionFlagsBits.EmbedLinks
+      ]
+    },
+    { 
+      name: "Artista de la Den", 
+      color: "#E6E6FA", 
+      position: 81,
+      permissions: [
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.EmbedLinks
+      ]
+    },
+    { 
+      name: "Meme Lord", 
+      color: "#FFDB58", 
+      position: 80,
+      permissions: [
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.UseExternalEmojis
+      ]
+    }
   ],
   
   niveles: [
-    { name: "Deidad del Anime", color: "#FF10F0", position: 84 },
-    { name: "El Elegido", color: "#B3E5FC", position: 83 },
-    { name: "Mito Viviente", color: "#F5F5F5", position: 82 },
-    { name: "Leyenda de la Den", color: "#FFA500", position: 81 },
-    { name: "Sabio de los Foros", color: "#FFD700", position: 80 },
-    { name: "Anciano de Akihabara", color: "#D4AF37", position: 79 },
-    { name: "Veterano de la Oscuridad", color: "#E67E22", position: 78 },
-    { name: "Erudito del Manga", color: "#FFB347", position: 77 },
-    { name: "Maestro del Shipping", color: "#D6A2E8", position: 76 },
-    { name: "Arquitecto de Teorías", color: "#C77DFF", position: 75 },
-    { name: "Guardián de los Memes", color: "#E91E63", position: 74 },
-    { name: "Vocal de la Comunidad", color: "#9B59B6", position: 73 },
-    { name: "Experto en Openings", color: "#4ECDC4", position: 72 },
-    { name: "Conocedor de Tropos", color: "#5AA8C7", position: 71 },
-    { name: "Coleccionista de Waifus", color: "#6FCF97", position: 70 },
-    { name: "Buscador de Tesoros", color: "#4A7C59", position: 69 },
-    { name: "Residente de la Guarida", color: "#3A5A8A", position: 68 },
-    { name: "Habitante Nocturno", color: "#2A2D3A", position: 67 },
-    { name: "Explorador de la Guarida", color: "#7A7A7A", position: 66 },
-    { name: "Novato Degenerado", color: "#4A4A4A", position: 65 }
+    { name: "Deidad del Anime", color: "#FF10F0", position: 79, permissions: [] },
+    { name: "El Elegido", color: "#B3E5FC", position: 78, permissions: [] },
+    { name: "Mito Viviente", color: "#F5F5F5", position: 77, permissions: [] },
+    { name: "Leyenda de la Den", color: "#FFA500", position: 76, permissions: [] },
+    { name: "Sabio de los Foros", color: "#FFD700", position: 75, permissions: [] },
+    { name: "Anciano de Akihabara", color: "#D4AF37", position: 74, permissions: [] },
+    { name: "Veterano de la Oscuridad", color: "#E67E22", position: 73, permissions: [] },
+    { name: "Erudito del Manga", color: "#FFB347", position: 72, permissions: [] },
+    { name: "Maestro del Shipping", color: "#D6A2E8", position: 71, permissions: [] },
+    { name: "Arquitecto de Teorías", color: "#C77DFF", position: 70, permissions: [] },
+    { name: "Guardián de los Memes", color: "#E91E63", position: 69, permissions: [] },
+    { name: "Vocal de la Comunidad", color: "#9B59B6", position: 68, permissions: [] },
+    { name: "Experto en Openings", color: "#4ECDC4", position: 67, permissions: [] },
+    { name: "Conocedor de Tropos", color: "#5AA8C7", position: 66, permissions: [] },
+    { name: "Coleccionista de Waifus", color: "#6FCF97", position: 65, permissions: [] },
+    { name: "Buscador de Tesoros", color: "#4A7C59", position: 64, permissions: [] },
+    { name: "Residente de la Guarida", color: "#3A5A8A", position: 63, permissions: [] },
+    { name: "Habitante Nocturno", color: "#2A2D3A", position: 62, permissions: [] },
+    { name: "Explorador de la Guarida", color: "#7A7A7A", position: 61, permissions: [] },
+    { name: "Novato Degenerado", color: "#4A4A4A", position: 60, permissions: [] }
+  ],
+  
+  lgbt: [
+    { 
+      name: "🏳️‍🌈 LGBT+", 
+      color: "#FF69B4", // Rosa vibrante (representación general)
+      position: 59,
+      permissions: [
+        PermissionFlagsBits.ChangeNickname,
+        PermissionFlagsBits.UseExternalEmojis
+      ]
+    },
+    { 
+      name: "🏳️‍⚧️ Trans", 
+      color: "#5BCEFA", // Azul celeste (bandera trans)
+      position: 58,
+      permissions: [
+        PermissionFlagsBits.ChangeNickname,
+        PermissionFlagsBits.UseExternalEmojis
+      ]
+    },
+    { 
+      name: "💙 Gay", 
+      color: "#078D70", // Verde azulado (bandera gay MLM)
+      position: 57,
+      permissions: [
+        PermissionFlagsBits.ChangeNickname,
+        PermissionFlagsBits.UseExternalEmojis
+      ]
+    },
+    { 
+      name: "💗 Lesbiana", 
+      color: "#D62900", // Naranja/rojo (bandera lesbiana)
+      position: 56,
+      permissions: [
+        PermissionFlagsBits.ChangeNickname,
+        PermissionFlagsBits.UseExternalEmojis
+      ]
+    },
+    { 
+      name: "💜 Bisexual", 
+      color: "#D60270", // Magenta (bandera bisexual)
+      position: 55,
+      permissions: [
+        PermissionFlagsBits.ChangeNickname,
+        PermissionFlagsBits.UseExternalEmojis
+      ]
+    },
+    { 
+      name: "💚 Pansexual", 
+      color: "#FF218C", // Rosa fucsia (bandera pansexual)
+      position: 54,
+      permissions: [
+        PermissionFlagsBits.ChangeNickname,
+        PermissionFlagsBits.UseExternalEmojis
+      ]
+    },
+    { 
+      name: "🎀 Cuestionable", 
+      color: "#B4B4B4", // Gris (cuestionándose)
+      position: 40,
+      permissions: [
+        PermissionFlagsBits.ChangeNickname,
+        PermissionFlagsBits.UseExternalEmojis
+      ]
+    }
+  ],
+  
+  especiales: [
+    { 
+      name: "🎂 Cumpleañero del Mes", 
+      color: "#FFD700", // Dorado
+      position: 39,
+      permissions: [
+        PermissionFlagsBits.UseExternalEmojis,
+        PermissionFlagsBits.EmbedLinks
+      ]
+    },
+    { 
+      name: "🎮 Streamer de la Den", 
+      color: "#9146FF", // Púrpura Twitch
+      position: 38,
+      permissions: [
+        PermissionFlagsBits.CreateInstantInvite,
+        PermissionFlagsBits.Stream,
+        PermissionFlagsBits.UseExternalEmojis
+      ]
+    },
+    { 
+      name: "📺 Creador de Contenido", 
+      color: "#FF0000", // Rojo YouTube
+      position: 37,
+      permissions: [
+        PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.UseExternalEmojis
+      ]
+    },
+    { 
+      name: "🎨 Artista Comisionado", 
+      color: "#00D9FF", // Cian brillante
+      position: 36,
+      permissions: [
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.EmbedLinks,
+        PermissionFlagsBits.UseExternalStickers
+      ]
+    },
+    { 
+      name: "🌟 MVP del Mes", 
+      color: "#FFA500", // Naranja
+      position: 35,
+      permissions: [
+        PermissionFlagsBits.UseExternalEmojis,
+        PermissionFlagsBits.ChangeNickname
+      ]
+    },
+    { 
+      name: "🎭 Participante de Eventos", 
+      color: "#E91E63", // Rosa evento
+      position: 34,
+      permissions: [
+        PermissionFlagsBits.UseExternalEmojis
+      ]
+    },
+    { 
+      name: "🏆 Ganador de Torneo", 
+      color: "#FFD700", // Oro
+      position: 33,
+      permissions: [
+        PermissionFlagsBits.UseExternalEmojis,
+        PermissionFlagsBits.ChangeNickname
+      ]
+    },
+    { 
+      name: "🎲 Jugador de Mesa", 
+      color: "#71368A", // Púrpura tabletop
+      position: 29,
+      permissions: []
+    },
+    { 
+      name: "🎸 Músico", 
+      color: "#1DB954", // Verde Spotify
+      position: 28,
+      permissions: [
+        PermissionFlagsBits.UseExternalEmojis
+      ]
+    },
+    { 
+      name: "📚 Lector Ávido", 
+      color: "#8B4513", // Café libro
+      position: 27,
+      permissions: []
+    },
+    { 
+      name: "🎬 Cinéfilo", 
+      color: "#FFD700", // Dorado película
+      position: 26,
+      permissions: []
+    },
+    { 
+      name: "🍜 Comensal", 
+      color: "#FF6347", // Rojo tomate
+      position: 25,
+      permissions: []
+    },
+    { 
+      name: "✈️ Viajero", 
+      color: "#87CEEB", // Azul cielo
+      position: 24,
+      permissions: []
+    }
   ],
   
   castigo: [
-    { name: "En Observación", color: "#CC9900", position: 10 },
-    { name: "Muteo de Voz", color: "#5C4033", position: 9 },
-    { name: "Muteado", color: "#2C2C2C", position: 8 },
-    { name: "Aislado / Cuarentena", color: "#808080", position: 7 }
+    { 
+      name: "En Observación", 
+      color: "#CC9900", 
+      position: 10,
+      permissions: [] // Sin permisos especiales, restricciones aplicadas por canal
+    },
+    { 
+      name: "Muteo de Voz", 
+      color: "#5C4033", 
+      position: 9,
+      permissions: [] // Restricciones de voz aplicadas manualmente
+    },
+    { 
+      name: "Muteado", 
+      color: "#2C2C2C", 
+      position: 8,
+      permissions: [] // Timeout/mute aplicado por ModerateMembers
+    },
+    { 
+      name: "Aislado / Cuarentena", 
+      color: "#808080", 
+      position: 7,
+      permissions: [] // Canal específico de cuarentena
+    }
   ]
 };
 
@@ -83,10 +469,13 @@ export const data = new SlashCommandBuilder()
           .addChoices(
             { name: "🛡️ Moderadores (7 roles)", value: "moderadores" },
             { name: "👑 VIP (6 roles)", value: "vip" },
+            { name: "⚧️ Género (4 roles)", value: "genero" },
             { name: "🎨 Contribución (3 roles)", value: "contribucion" },
             { name: "⭐ Niveles (20 roles)", value: "niveles" },
+            { name: "🏳️‍🌈 LGBT+ (20 roles)", value: "lgbt" },
+            { name: "✨ Especiales (20 roles)", value: "especiales" },
             { name: "⛔ Castigo (4 roles)", value: "castigo" },
-            { name: "🌐 TODOS (40 roles)", value: "all" }
+            { name: "🌐 TODOS (84 roles)", value: "all" }
           )
       )
   )
@@ -102,8 +491,11 @@ export const data = new SlashCommandBuilder()
           .addChoices(
             { name: "🛡️ Moderadores", value: "moderadores" },
             { name: "👑 VIP", value: "vip" },
+            { name: "⚧️ Género", value: "genero" },
             { name: "🎨 Contribución", value: "contribucion" },
             { name: "⭐ Niveles", value: "niveles" },
+            { name: "🏳️‍🌈 LGBT+", value: "lgbt" },
+            { name: "✨ Especiales", value: "especiales" },
             { name: "⛔ Castigo", value: "castigo" }
           )
       )
@@ -153,7 +545,7 @@ export async function execute(context) {
 }
 
 /**
- * Crear roles
+ * Crear roles CON PERMISOS
  */
 async function handleCreate(context) {
   await context.deferReply({ ephemeral: true });
@@ -176,14 +568,17 @@ async function handleCreate(context) {
   }
 
   await context.editReply({
-    content: `🔄 Creando ${totalRoles} roles...\n\n*Esto puede tomar varios minutos debido a rate limits de Discord.*`
+    content: `🔄 Creando ${totalRoles} roles con sus permisos específicos...\n\n*Esto puede tomar varios minutos debido a rate limits de Discord.*`
   });
 
   const results = {
     moderadores: { created: [], skipped: [], errors: [] },
     vip: { created: [], skipped: [], errors: [] },
+    genero: { created: [], skipped: [], errors: [] },
     contribucion: { created: [], skipped: [], errors: [] },
     niveles: { created: [], skipped: [], errors: [] },
+    lgbt: { created: [], skipped: [], errors: [] },
+    especiales: { created: [], skipped: [], errors: [] },
     castigo: { created: [], skipped: [], errors: [] }
   };
 
@@ -203,16 +598,27 @@ async function handleCreate(context) {
           continue;
         }
 
-        // Crear rol
-        const role = await context.guild.roles.create({
+        // ✅ CRÍTICO: Crear rol CON PERMISOS
+        const roleConfig = {
           name: roleData.name,
           color: roleData.color,
           position: roleData.position,
           mentionable: false,
           reason: "Setup automático de jerarquía - Degeneracy Den"
-        });
+        };
 
-        logger.info(`✅ Rol creado: ${roleData.name}`);
+        // Solo agregar permissions si existen (evitar array vacío)
+        if (roleData.permissions && roleData.permissions.length > 0) {
+          roleConfig.permissions = roleData.permissions;
+        }
+
+        const role = await context.guild.roles.create(roleConfig);
+
+        logger.info(
+          `✅ Rol creado: ${roleData.name} ` +
+          `(Permisos: ${roleData.permissions?.length || 0})`
+        );
+        
         results[category].created.push(roleData.name);
         created++;
 
@@ -227,10 +633,10 @@ async function handleCreate(context) {
     }
   }
 
-  // Generar reporte
+  // Generar reporte detallado
   let report = `✅ **Proceso Completado**\n\n`;
   report += `📊 **Resumen:**\n`;
-  report += `• Creados: **${created}**\n`;
+  report += `• Creados: **${created}** (con permisos configurados)\n`;
   report += `• Omitidos (ya existían): **${skipped}**\n`;
   report += `• Errores: **${errors}**\n\n`;
 
@@ -240,12 +646,17 @@ async function handleCreate(context) {
       const emoji = {
         moderadores: "🛡️",
         vip: "👑",
+        genero: "⚧️",
         contribucion: "🎨",
         niveles: "⭐",
+        lgbt: "🏳️‍🌈",
+        especiales: "✨",
         castigo: "⛔"
       }[category];
 
-      report += `${emoji} **${category.toUpperCase()}:**\n`;
+      const permissionInfo = getPermissionSummary(category);
+
+      report += `${emoji} **${category.toUpperCase()}:** ${permissionInfo}\n`;
       
       if (data.created.length > 0) {
         report += `✅ Creados (${data.created.length}): ${data.created.slice(0, 3).join(", ")}${data.created.length > 3 ? "..." : ""}\n`;
@@ -263,11 +674,31 @@ async function handleCreate(context) {
     }
   }
 
+  report += `\n💡 **Nota:** Los roles de moderadores tienen permisos administrativos activos.`;
+
   await context.editReply({ content: report });
 }
 
 /**
- * Previsualizar roles
+ * Obtener resumen de permisos por categoría
+ */
+function getPermissionSummary(category) {
+  const summaries = {
+    moderadores: "Permisos de moderación activos",
+    vip: "Permisos sociales especiales",
+    genero: "Rol de identidad de género",
+    contribucion: "Permisos de contenido",
+    niveles: "Roles cosméticos (sin permisos)",
+    lgbt: "Permisos sociales básicos",
+    especiales: "Roles de eventos y comunidad",
+    castigo: "Roles restrictivos (sin permisos)"
+  };
+  
+  return summaries[category] || "";
+}
+
+/**
+ * Previsualizar roles CON INFO DE PERMISOS
  */
 async function handlePreview(context) {
   const category = context.source.options.getString("category");
@@ -283,8 +714,11 @@ async function handlePreview(context) {
   const emoji = {
     moderadores: "🛡️",
     vip: "👑",
+    genero: "⚧️",
     contribucion: "🎨",
     niveles: "⭐",
+    lgbt: "🏳️‍🌈",
+    especiales: "✨",
     castigo: "⛔"
   }[category];
 
@@ -294,8 +728,10 @@ async function handlePreview(context) {
     const colorBox = `\`${role.color}\``;
     const existing = context.guild.roles.cache.find(r => r.name === role.name);
     const status = existing ? "✅" : "➕";
+    const permCount = role.permissions?.length || 0;
+    const permInfo = permCount > 0 ? ` (${permCount} permisos)` : " (sin permisos)";
     
-    preview += `${status} **${role.name}** ${colorBox}\n`;
+    preview += `${status} **${role.name}** ${colorBox}${permInfo}\n`;
   }
 
   preview += `\n💡 Usa \`/setupdegeneracyden create category:${category}\` para crear estos roles.`;
