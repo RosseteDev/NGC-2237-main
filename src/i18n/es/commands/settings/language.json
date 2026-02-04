@@ -1,7 +1,7 @@
 {
   "command": {
     "name": "lenguaje",
-    "description": "ñiñiar el idioma del servidor",
+    "description": "Cambiar el idioma del servidor",
     "aliases": ["lang"],
     "metadata": {
       "contexts": ["guild"],
